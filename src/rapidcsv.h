@@ -41,7 +41,6 @@ namespace rapidcsv
         std::ostringstream out;
         out << pVal;
         pStr = out.str();
-      }
     }
 
     void ToVal(const std::string& pStr, T& pVal) const
@@ -49,7 +48,7 @@ namespace rapidcsv
       static_assert(std::is_arithmetic<T>::value, "unsupported conversion datatype");
       std::istringstream in(pStr);
       in >> pVal;
-      }
+    }
   };
 
   template<>
