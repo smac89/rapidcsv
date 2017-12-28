@@ -14,14 +14,13 @@
 #pragma once
 
 #include <algorithm>
-#include <cassert>
 #include <fstream>
 #include <iostream>
 #include <map>
 #include <sstream>
 #include <string>
-#include <typeinfo>
 #include <vector>
+#include <type_traits>
 
 #if defined(_MSC_VER)
 #include <BaseTsd.h>
@@ -33,101 +32,32 @@ typedef SSIZE_T ssize_t;
 
 namespace rapidcsv
 {
-  class no_converter : public std::exception
-  {
-    virtual const char* what() const throw()
-    {
-      return "unsupported conversion datatype";
-    }
-  };
-
   template <typename T>
   class Converter
   {
   public:
-    void ToStr(std::string& pStr, const T& pVal) const
-    {
-      if (typeid(T) == typeid(int) ||
-          typeid(T) == typeid(long) ||
-          typeid(T) == typeid(long long) ||
-          typeid(T) == typeid(unsigned) ||
-          typeid(T) == typeid(unsigned long) ||
-          typeid(T) == typeid(unsigned long long) ||
-          typeid(T) == typeid(float) ||
-          typeid(T) == typeid(double) ||
-          typeid(T) == typeid(long double))
-      {
-        pStr = std::to_string(pVal);
-      }
-      else if (typeid(T) == typeid(char))
-      {
-        std::ostringstream out;
-        out << pVal;
-        pStr = out.str();
-      }
-      else
-      {
-        throw no_converter();
-      }
+    void ToStr(const T &pVal, std::string &pStr) const {
+      static_assert(std::is_arithmetic<T>::value, "unsupported conversion datatype");
+      std::ostringstream out;
+      out << pVal;
+      pStr = out.str();
     }
 
-    void ToVal(T& pVal, const std::string& pStr) const
+    void ToVal(const std::string& pStr, T& pVal) const
     {
-      if (typeid(T) == typeid(int))
-      {
-        pVal = static_cast<T>(std::stoi(pStr));
-      }
-      else if (typeid(T) == typeid(long))
-      {
-        pVal = static_cast<T>(std::stol(pStr));
-      }
-      else if (typeid(T) == typeid(long long))
-      {
-        pVal = static_cast<T>(std::stoll(pStr));
-      }
-      else if (typeid(T) == typeid(unsigned))
-      {
-        pVal = static_cast<T>(std::stoul(pStr));
-      }
-      else if (typeid(T) == typeid(unsigned long))
-      {
-        pVal = static_cast<T>(std::stoul(pStr));
-      }
-      else if (typeid(T) == typeid(unsigned long long))
-      {
-        pVal = static_cast<T>(std::stoull(pStr));
-      }
-      else if (typeid(T) == typeid(float))
-      {
-        pVal = static_cast<T>(std::stof(pStr));
-      }
-      else if (typeid(T) == typeid(double))
-      {
-        pVal = static_cast<T>(std::stod(pStr));
-      }
-      else if (typeid(T) == typeid(long double))
-      {
-        pVal = static_cast<T>(std::stold(pStr));
-      }
-      else if (typeid(T) == typeid(char))
-      {
-        pVal = static_cast<T>(pStr[0]);
-      }
-      else
-      {
-        throw no_converter();
-      }
+      static_assert(std::is_arithmetic<T>::value, "unsupported conversion datatype");
+      std::istringstream in(pStr);
+      in >> pVal;
     }
   };
 
-  template<>
-  inline void Converter<std::string>::ToStr(std::string& pStr, const std::string& pVal) const
-  {
-    pStr = pVal;
+  template <>
+  inline void Converter<std::string>::ToStr(const std::string& pVal, std::string& pStr) const {
+      pStr = pVal;
   }
 
   template<>
-  inline void Converter<std::string>::ToVal(std::string& pVal, const std::string& pStr) const
+  inline void Converter<std::string>::ToVal(const std::string& pStr, std::string& pVal) const
   {
     pVal = pStr;
   }
@@ -210,7 +140,7 @@ namespace rapidcsv
         if (std::distance(mData.begin(), itRow) > mProperties.mColumnNameIdx)
         {
           T val;
-          converter.ToVal(val, itRow->at(columnIdx));
+          converter.ToVal(itRow->at(columnIdx), val);
           column.push_back(val);
         }
       }
@@ -252,7 +182,7 @@ namespace rapidcsv
       for (auto itRow = pColumn.begin(); itRow != pColumn.end(); ++itRow)
       {
         std::string str;
-        converter.ToStr(str, *itRow);
+        converter.ToStr(*itRow, str);
         mData.at(std::distance(pColumn.begin(), itRow) + (mProperties.mColumnNameIdx + 1)).at(columnIdx) = str;
       }
     }
@@ -305,7 +235,7 @@ namespace rapidcsv
         if (std::distance(mData.at(rowIdx).begin(), itCol) > mProperties.mRowNameIdx)
         {
           T val;
-          converter.ToVal(val, *itCol);
+          converter.ToVal(*itCol, val);
           row.push_back(val);
         }
       }
@@ -347,7 +277,7 @@ namespace rapidcsv
       for (auto itCol = pRow.begin(); itCol != pRow.end(); ++itCol)
       {
         std::string str;
-        converter.ToStr(str, *itCol);
+        converter.ToStr(*itCol, str);
         mData.at(rowIdx).at(std::distance(pRow.begin(), itCol) + (mProperties.mRowNameIdx + 1)) = str;
       }
     }
@@ -394,7 +324,7 @@ namespace rapidcsv
         
       T val;
       Converter<T> converter;
-      converter.ToVal(val, mData.at(rowIdx).at(columnIdx));
+      converter.ToVal(mData.at(rowIdx).at(columnIdx), val);
       return val;
     }
 
@@ -439,7 +369,7 @@ namespace rapidcsv
 
       std::string str;
       Converter<T> converter;
-      converter.ToStr(str, pCell);
+      converter.ToStr(pCell, str);
       mData.at(rowIdx).at(columnIdx) = str;
     }
 
