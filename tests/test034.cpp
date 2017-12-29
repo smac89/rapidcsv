@@ -1,44 +1,40 @@
 // test034.cpp - copy document
 
-#include <rapidcsv.h>
+#include <rapidcsv.hpp>
 #include "unittest.h"
 
-int main()
-{
-  int rv = 0;
+int main() {
+    int rv = 0;
 
-  std::string csv =
-    "-,A,B,C\n"
-    "1,3,9,81\n"
-    "2,4,16,256\n"
-    ;
+    std::string csv =
+            "-,A,B,C\n"
+                    "1,3,9,81\n"
+                    "2,4,16,256\n";
 
-  std::string path = unittest::TempPath();
-  unittest::WriteFile(path, csv);
+    std::string path = unittest::TempPath();
+    unittest::WriteFile(path, csv);
 
-  std::string pathcopy = unittest::TempPath();
-  
-  try
-  {
-    rapidcsv::Document doc(path);
+    std::string pathcopy = unittest::TempPath();
 
-    rapidcsv::Document doccopy(doc);
+    try {
+        rapidcsv::Document doc(path);
 
-    doccopy.Save(pathcopy);
+        rapidcsv::Document doccopy(doc);
 
-    std::string csvread = unittest::ReadFile(pathcopy);
+        doccopy.Save(pathcopy);
 
-    unittest::ExpectEqual(std::string, csv, csvread);
-  }
-  catch(const std::exception& ex)
-  {
-    std::cout << ex.what() << std::endl;
-    rv = 1;
-  }
+        std::string csvread = unittest::ReadFile(pathcopy);
 
-  unittest::DeleteFile(path);
-  unittest::DeleteFile(pathcopy);
+        unittest::ExpectEqual(std::string, csv, csvread);
+    }
+    catch (const std::exception &ex) {
+        std::cout << ex.what() << std::endl;
+        rv = 1;
+    }
 
-  return rv;
+    unittest::DeleteFile(path);
+    unittest::DeleteFile(pathcopy);
+
+    return rv;
 }
 

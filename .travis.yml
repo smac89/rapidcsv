@@ -10,7 +10,7 @@ os:
 
 script:
   - mkdir -p build
-  - cd build
+  - pushd build
   - cmake ..
   - make
   - ctest --output-on-failure

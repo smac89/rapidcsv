@@ -1,23 +1,29 @@
-# Project
-cmake_minimum_required(VERSION 3.1 FATAL_ERROR)
+cmake_minimum_required(VERSION 3.0 FATAL_ERROR)
 project(rapidcsv VERSION 1.0 LANGUAGES CXX)
-set (CMAKE_CXX_STANDARD 11)
-if(MSVC)
-  if(CMAKE_CXX_FLAGS MATCHES "/W[0-4]")
-    string(REGEX REPLACE "/W[0-4]" "/W4" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
-  else()
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /W4")
-  endif()
-else()
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -Wall -Wextra -Wpedantic -Wshadow -Wpointer-arith \
+
+set(CMAKE_CXX_STANDARD 11)
+if (MSVC)
+    if (CMAKE_CXX_FLAGS MATCHES "/W[0-4]")
+        string(REGEX REPLACE "/W[0-4]" "/W4" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
+    else ()
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /W4")
+    endif ()
+else ()
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -Wall -Wextra -Wpedantic -Wshadow -Wpointer-arith \
                        -Wcast-qual -Wno-missing-braces -Wswitch-default -Wcast-align -Wunreachable-code \
                        -Wundef -Wuninitialized")
-endif()
+endif ()
+
+# rapid csv library
+add_library(${PROJECT_NAME} INTERFACE)
+target_sources(${PROJECT_NAME} INTERFACE rapidcsv.hpp)
+target_include_directories(${PROJECT_NAME} INTERFACE
+        "${PROJECT_SOURCE_DIR}/include")
 
 # Tests
 enable_testing()
-include_directories("src")
-set(LIB_HEADERS "src/rapidcsv.h")
+include_directories("include")
+set(LIB_HEADERS "include/rapidcsv.hpp")
 set(TEST_HEADERS "tests/unittest.h")
 
 add_executable(test001 tests/test001.cpp)
