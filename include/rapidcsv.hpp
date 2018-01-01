@@ -366,6 +366,9 @@ namespace rapidcsv {
             int lf = 0;
 
             for (std::string buffer(bufLength, '\0'); file.read(&buffer[0], buffer.length()).gcount() > 0; ) {
+                if (file.gcount() < buffer.length()) {
+                    buffer.resize(static_cast<std::size_t>(file.gcount()));
+                }
                 for (const char &byte: buffer) {
                     switch (byte) {
                         case '"':
@@ -444,12 +447,13 @@ namespace rapidcsv {
         }
 
         static std::string to_csv_row(const std::vector<std::string>& row) {
-            std::ostringstream oss;
             if (!row.empty()) {
+                std::ostringstream oss;
                 std::copy(std::begin(row), std::end(row), std::ostream_iterator<std::string>(oss, ","));
+                std::string joined = oss.str();
+                return joined.erase(joined.rfind(','));
             }
-            std::string joined = oss.str();
-            return joined.erase(joined.rfind(','));
+            return {};
         }
 
         void write_csv() const {
