@@ -1,10 +1,3 @@
-find_package(Boost QUIET COMPONENTS filesystem)
-
-if (Boost_FOUND)
-    include_directories("${Boost_INCLUDE_DIRS}")
-    link_libraries("${Boost_LIBRARIES}")
-endif()
-
 add_executable(test001 test001.cpp)
 target_link_libraries(test001 ${PROJECT_NAME})
 add_test(NAME test001 COMMAND test001)

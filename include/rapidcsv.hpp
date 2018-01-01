@@ -366,8 +366,9 @@ namespace rapidcsv {
             int lf = 0;
 
             for (std::string buffer(bufLength, '\0'); file.read(&buffer[0], buffer.length()).gcount() > 0; ) {
-                if (file.gcount() < buffer.length()) {
-                    buffer.resize(static_cast<std::size_t>(file.gcount()));
+                std::string::size_type content_size = static_cast<std::string::size_type>(file.gcount());
+                if (content_size < buffer.length()) {
+                    buffer.resize(content_size);
                 }
                 for (const char &byte: buffer) {
                     switch (byte) {

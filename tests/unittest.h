@@ -4,7 +4,9 @@
 #include <string>
 #include <sstream>
 #include <cassert>
-#include <boost/filesystem.hpp>
+#include <random>
+#include <algorithm>
+#include <iterator>
 
 namespace unittest {
     namespace detail {
@@ -15,10 +17,21 @@ namespace unittest {
         }
     }
 
-    inline std::string TempPath() {
-        boost::filesystem::path temp_path = boost::filesystem::temp_directory_path() / boost::filesystem::unique_path();
-        const std::string tempStr = temp_path.native();
-        return tempStr;
+    inline std::string TempPath(std::string::size_type length = 19) {
+        thread_local auto random_char = []() -> char {
+            static std::string chars_pool = "0123456789"
+                    "abcdefghijklmnopqrstuvwxyz"
+                    "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+            static std::mt19937 engine(std::random_device{}());
+            static std::uniform_int_distribution<std::string::size_type> dist(0, chars_pool.length() - 1);
+
+            return chars_pool[dist(engine)];
+        };
+
+        std::string tempStr(length, '\0');
+        std::generate(std::begin(tempStr), std::end(tempStr), random_char);
+
+        return tempStr + ".csv";
     }
 
     inline void WriteFile(const std::string &pPath, const std::string &pData) {
