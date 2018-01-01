@@ -16,12 +16,12 @@ int main() {
     std::string path = unittest::TempPath();
 
     try {
-        rapidcsv::Document doc(rapidcsv::Properties("", 0, 0, false));
+        rapidcsv::Document doc(rapidcsv::Properties("", 0, 0));
 
-        doc.SetColumn<int>(0, std::vector<int>({2, 3}));
-        doc.SetColumn<int>(1, std::vector<int>({4, 9, 16, 25}));
-        doc.SetColumn<int>(2, std::vector<int>({16, 81, 256, 625}));
-        doc.SetColumn<int>(3, std::vector<int>({256, 6561, 65536, 390625}));
+        doc.SetColumn<int>(0, {2, 3});
+        doc.SetColumn<int>(1, {4, 9, 16, 25});
+        doc.SetColumn<int>(2, {16, 81, 256, 625});
+        doc.SetColumn<int>(3, {256, 6561, 65536, 390625});
 
         doc.SetCell<int>(0, 2, 4);
         doc.SetCell<int>(0, 3, 5);

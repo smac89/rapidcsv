@@ -1,17 +1,10 @@
 #pragma once
 
-#ifndef _MSC_VER
-
-#include <unistd.h>
-
-#else
-#include <io.h>
-#endif
-
 #include <fstream>
 #include <string>
 #include <sstream>
 #include <cassert>
+#include <boost/filesystem.hpp>
 
 namespace unittest {
     namespace detail {
@@ -23,26 +16,17 @@ namespace unittest {
     }
 
     inline std::string TempPath() {
-        char name[] = "rapidcsvtest.XXXXXX";
-#ifndef _MSC_VER
-        int fd = mkstemp(name);
-        close(fd);
-#else
-        _mktemp_s(name, strlen(name) + 1);
-#endif
-        return std::string(name);
+        boost::filesystem::path temp_path = boost::filesystem::temp_directory_path() / boost::filesystem::unique_path();
+        const std::string tempStr = temp_path.native();
+        return tempStr;
     }
 
     inline void WriteFile(const std::string &pPath, const std::string &pData) {
-        std::ofstream outfile;
-        outfile.open(pPath, std::ifstream::out | std::ifstream::binary);
-        outfile << pData;
-        outfile.close();
+        std::ofstream(pPath, std::ios::binary | std::ios::out) << pData;
     }
 
     inline std::string ReadFile(const std::string &pPath) {
-        std::ifstream infile;
-        infile.open(pPath, std::ifstream::in | std::ifstream::binary);
+        std::ifstream infile(pPath, std::ifstream::in | std::ifstream::binary);
         std::string data((std::istreambuf_iterator<char>(infile)), std::istreambuf_iterator<char>());
         infile.close();
         return data;

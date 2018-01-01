@@ -13,7 +13,7 @@ int main() {
     std::string path = unittest::TempPath();
 
     try {
-        rapidcsv::Document doc(rapidcsv::Properties("", -1, -1, false));
+        rapidcsv::Document doc(rapidcsv::Properties("", -1, -1));
 
         doc.SetCell<int>(0, 0, 3);
         doc.SetCell<int>(1, 0, 9);

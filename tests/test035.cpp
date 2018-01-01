@@ -6,17 +6,17 @@
 #include "unittest.h"
 
 // Data requested as ints to be converted to fixed-point two decimal numbers
-namespace rapidcsv {
+namespace rapidcsv::convert {
     template<>
-    void Converter<int>::ToVal(const std::string &pStr, int &pVal) const {
-        pVal = static_cast<int>(roundf(100.0f * std::stof(pStr)));
+    inline int convert_to_val(const std::string &pStr) {
+        return static_cast<int>(roundf(100.0f * std::stof(pStr)));
     }
 
     template<>
-    void Converter<int>::ToStr(const int &pVal, std::string &pStr) const {
+    std::string convert_to_string(const int &pVal) {
         std::ostringstream out;
-        out << std::fixed << std::setprecision(2) << static_cast<float>(pVal) / 100.0f;
-        pStr = out.str();
+        out << std::fixed << std::setprecision(2) << (static_cast<float>(pVal) / 100.0f);
+        return out.str();
     }
 }
 
