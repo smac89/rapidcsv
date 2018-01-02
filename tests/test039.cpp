@@ -15,7 +15,7 @@ int main() {
     unittest::WriteFile(path, csv);
 
     try {
-        rapidcsv::Document doc(path);
+        rapidcsv::Document doc(rapidcsv::Properties(path, 0, 0, rapidcsv::CSVProperty::hasCR));
 
         unittest::ExpectEqual(std::string, doc.GetCell<std::string>(0, 0), "3");
         unittest::ExpectEqual(std::string, doc.GetCell<std::string>(1, 0), "9");

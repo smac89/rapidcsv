@@ -65,7 +65,7 @@ int main() {
         unittest::ExpectEqual(std::string, doc.GetCell<std::string>(3, 7), "US");
 
         unittest::ExpectEqual(std::string, doc.GetCell<std::string>(0, 8), "Paris");
-        unittest::ExpectEqual(std::string, doc.GetCell<std::string>(1, 8), "48°51'24\"N");
+        unittest::ExpectEqual(std::string, doc.GetCell<std::string>(1, 8), "48°51'24\"\"N");
         unittest::ExpectEqual(std::string, doc.GetCell<std::string>(2, 8), "2°21'03\"E");
         unittest::ExpectEqual(std::string, doc.GetCell<std::string>(3, 8), "France");
     }
