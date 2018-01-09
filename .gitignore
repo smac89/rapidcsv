@@ -1,5 +1,10 @@
 
-# Created by https://www.gitignore.io/api/c++,cmake,clion,visualstudiocode
+# Created by https://www.gitignore.io/api/c++,cmake,clion,anjuta,netbeans,visualstudiocode
+
+### Anjuta ###
+# Local configuration folder and symbol database
+/.anjuta/
+/.anjuta_sym_db.db
 
 ### C++ ###
 # Prerequisites
@@ -112,6 +117,15 @@ compile_commands.json
 CTestTestfile.cmake
 build
 
+### NetBeans ###
+nbproject/private/
+build/
+nbbuild/
+dist/
+nbdist/
+.nb-gradle/
+nbactions.xml
+
 ### VisualStudioCode ###
 .vscode/*
 !.vscode/settings.json
@@ -120,4 +134,4 @@ build
 !.vscode/extensions.json
 .history
 
-# End of https://www.gitignore.io/api/c++,cmake,clion,visualstudiocode
+# End of https://www.gitignore.io/api/c++,cmake,clion,anjuta,netbeans,visualstudiocode
