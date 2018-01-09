@@ -20,20 +20,20 @@
 #include <unordered_set>
 #include <sstream>
 #include <string>
+#include <list>
 #include <vector>
 #include <type_traits>
 #include <exception>
 #include <iterator>
 #include <cstddef>
 #include <utility>
+#include <array>
+
+#include "csv_reader.hpp"
 
 static constexpr auto bufLength = 64 * 1024;
 
 namespace rapidcsv {
-
-    static constexpr auto CR = '\r';
-    static constexpr auto LF = '\n';
-    static constexpr auto CRLF = R"(\r\n)";
 
     namespace detail {
         template <class ...T>
@@ -46,26 +46,6 @@ namespace rapidcsv {
 
         template <class A>
         struct are_same<A> : std::true_type {};
-    }
-
-    namespace except {
-        struct csv_quote_inside_non_quote_field_exception: public std::exception {
-            virtual const char* what() const noexcept {
-                return "Quotes are not allowed inside non-quoted fields";
-            }
-        };
-
-        struct csv_unescaped_quote_exception: public std::exception {
-            virtual const char* what() const noexcept {
-                return "Quotes appearing inside a field, are to be escaped with another quote";
-            }
-        };
-
-        struct csv_line_break_inside_non_quote_exception: public std::exception {
-            virtual const char* what() const noexcept {
-                return "Fields containing line breaks must be enclosed with quotes";
-            }
-        };
     }
 
     namespace convert {
@@ -85,133 +65,45 @@ namespace rapidcsv {
         }
     }
 
-    namespace parse {
+    enum class CSVPropertyType {
+        QUOTE,
+        FIELD_SEP,
+        COL_LABEL,
+        ROW_LABEL,
+        ROW_SEP
+    };
 
-        template <typename StreamIter>
-        class CSVParser {
-            using namespace except;
-            friend class CSVParserIterator;
+    template <typename P>
+    class CSVProperty {
+        P value;
+    public:
+        CSVProperty(): value(std::declval<P>()) {}
+        CSVProperty(const P& _value): value(_value) {}
+    };
 
-        protected:
-            std::string current;
-            CSVParserIterator iterator;
-            StreamIter& _begin, &_end;
+    struct CSVRowSep: public CSVProperty<std::array<char, 2>> {
+        using CSVProperty::CSVProperty;
+//        CSVRowSep(const char (&rowSep)[2] = "\n"): CSVProperty(rowSep) {}
+    };
 
-        private:
-            bool _start_quoted_field;
-            bool _end_quoted_field;
-            bool _nested_quote;
-            bool _is_quoted_field;
+    struct CSVHasRowLabel: public CSVProperty<bool> {
+        using CSVProperty::CSVProperty;
+//        CSVHasRowLabel(const bool hasRowLabel = false): CSVProperty(hasRowLabel) {}
+    };
 
-        public:
-            CSVParser(StreamIter &begin, StreamIter &end): current('\0'), iterator(this), _begin(begin), _end(end) {
-                _start_quoted_field = false;
-                _end_quoted_field = true;
-                _nested_quote = false;
-                _is_quoted_field = false;
-                parseNext();
-            }
+    struct CSVHasColLabel: public CSVProperty<bool> {
+        using CSVProperty::CSVProperty;
+//        CSVHasColLabel(const bool hasColLabel = false): CSVProperty(hasColLabel) {}
+    };
 
-            CSVParserIterator* begin() {
-                return &iterator;
-            }
+    struct CSVFieldSep: public CSVProperty<char> {
+        using CSVProperty::CSVProperty;
+//        CSVFieldSep(const char fieldSep = ','): CSVProperty(fieldSep) {}
+    };
 
-            CSVParserIterator* end() {
-                return &iterator_empty;
-            }
-        private:
-            bool parseNext() {
-                if (_begin == _end) {
-                    return false;
-                }
-
-                for (current = "";_begin != _end; ) {
-                    char byte = *_begin++;
-                    switch (byte) {
-                        case '"':
-                            if (current.empty()) {
-                                _is_quoted_field = true;
-                                _start_quoted_field = true;
-                            } else if (!_is_quoted_field) {
-                                throw csv_quote_inside_non_quote_field_exception();
-                            } else if (!_end_quoted_field) {
-                                _end_quoted_field = true;
-                            } else {
-                                _nested_quote = true;
-                                _end_quoted_field = false;
-                                continue;
-                            }
-                            current += byte;
-                            break;
-
-                        case ',':
-                            if (!_is_quoted_field || _end_quoted_field) {
-                                goto found_field_end;
-                            }
-                            current += byte;
-                            break;
-
-                        case CR:
-                            if (_is_quoted_field && _end_quoted_field) {
-                                throw csv_line_break_inside_non_quote_exception();
-                            }
-                            current += byte;
-                            break;
-
-                        case LF:
-                            if (_is_quoted_field && _end_quoted_field) {
-                                ++lf;
-                                row.push_back(cell);
-                                mData.push_back(row);
-                                cell.erase();
-                                row.clear();
-                            } else {
-                                cell += byte;
-                            }
-                            break;
-
-                        default:
-                            if (!quoted && cell.back() == '"') {
-                                throw csv_unescaped_quote_exception();
-                            }
-                            cell += byte;
-                    }
-                }
-
-                found_field_end: ;
-
-
-                return true;
-            }
-        };
-
-        class CSVParserIterator {
-        public:
-            CSVParserIterator(CSVParser* parser): _parser(parser) {}
-
-            CSVParserIterator* operator++ () {
-                if (!_parser->parseNext()) {
-                    return &iterator_empty;
-                }
-                return this;
-            }
-
-            const std::string operator *() const { return _parser->current; }
-
-        private:
-            CSVParser* _parser;
-        };
-
-        class CSVParserIteratorEmpty: public CSVParserIterator {
-        public:
-            CSVParserIteratorEmpty(): CSVParserIterator(nullptr) {}
-        } iterator_empty;
-    }
-
-    enum class CSVProperty {
-        hasCR,
-        hasRowLabel,
-        hasColLabel
+    struct CSVQuote: public CSVProperty<char> {
+        using CSVProperty::CSVProperty;
+//        CSVQuote(const char quote = '"'): CSVProperty(quote) {}
     };
 
     class Properties {
@@ -227,20 +119,42 @@ namespace rapidcsv {
         template <typename... Prop>
         explicit Properties(const std::string &pPath = "",
                             const int pColumnNameIdx = 0,
-                            const int pRowNameIdx = 0, Prop&&... csvProperties)
-                : Properties(pPath, pColumnNameIdx, pRowNameIdx, { std::forward<Prop>(csvProperties)... }) {}
+                            const int pRowNameIdx = 0)
+                : mPath(pPath), mColumnNameIdx(pColumnNameIdx), mRowNameIdx(pRowNameIdx),
+                  mHasCR(false), mhasRowLabel(false), mHasColLabel(false),
+                  _quote('"'), _fieldSep(','), _hasColLabel(false), _hasRowLabel(false), _rowSep({'\n'}) {}
 
-//        template <typename... Prop>
-//        explicit Properties(const std::string &pPath = "", Prop&&... csvProperties)
-//                : Properties(pPath, 0, 0, { std::forward<Prop>(csvProperties)... }) {}
+        Properties& rowSep(const CSVRowSep& rowSep) {
+            this->_rowSep = rowSep;
+            return *this;
+        }
+
+        Properties& quote(const CSVQuote& quote) {
+            this->_quote = quote;
+            return *this;
+        }
+
+        Properties& fieldSep(const CSVFieldSep& fieldSep) {
+            this->_fieldSep = fieldSep;
+            return *this;
+        }
+
+        Properties& hasColLabel(const CSVHasColLabel& hasColLabel) {
+            this->_hasColLabel = hasColLabel;
+            return *this;
+        }
+
+        Properties& hasRowLabel(const CSVHasRowLabel& hasRowLabel) {
+            this->_hasRowLabel = hasRowLabel;
+            return *this;
+        }
 
     private:
-        Properties(const std::string &pPath, const int pColumnNameIdx, const int pRowNameIdx,
-                   const std::unordered_set<CSVProperty>& csv_properties)
-                : mPath(pPath), mColumnNameIdx(pColumnNameIdx), mRowNameIdx(pRowNameIdx),
-                  mHasCR(csv_properties.count(CSVProperty::hasCR) == 1),
-                  mhasRowLabel(csv_properties.count(CSVProperty::hasRowLabel) == 1),
-                  mHasColLabel(csv_properties.count(CSVProperty::hasColLabel) == 1) {}
+        CSVQuote _quote;
+        CSVFieldSep _fieldSep;
+        CSVHasColLabel _hasColLabel;
+        CSVHasRowLabel _hasRowLabel;
+        CSVRowSep _rowSep;
     };
 
     class Document;
@@ -276,7 +190,8 @@ public:
             : mProperties(pProperties) {
         if (!mProperties.mPath.empty()) {
             ReadCsv(mProperties.mPath);
-            parse::CSVParser parser(std::istream_iterator<char>(std::cin), std::istream_iterator<char>{});
+            auto reader = fieldReader(std::istreambuf_iterator<char>(std::cin),
+                    std::istreambuf_iterator<char>{});
         }
     }
 
@@ -539,154 +454,18 @@ private:
 
         std::ifstream file(path, std::ios::in | std::ios::binary);
 
-        std::vector<std::string> row;
-        std::string cell;
-        bool quoted = false;
-        int cr = 0;
-        int lf = 0;
+        auto reader = fieldReader(std::istreambuf_iterator<char>(file),
+                                  std::istreambuf_iterator<char>{});
 
-        for (const char& byte : std::move(read_csv(path))) {
-            switch (byte) {
-                case '"':
-                    if (!quoted) {
-                        if (cell.empty() || cell.front() == '"') {
-                            quoted = true;
-                        } else {
-                            throw csv_quote_inside_non_quote_field_exception();
-                        }
-                    } else if (cell.front() != '"') {
-
-                    } else if (cell.back() == '"') {
-                        quoted = false;
-                        break;
-                    } else {
-                        throw csv_unescaped_quote_exception();
-                    }
-                    cell += byte;
-                    break;
-
-                case ',':
-                    if (!quoted) {
-                        row.push_back(cell);
-                        cell.erase();
-                    } else {
-                        cell += byte;
-                    }
-                    break;
-
-                case CR:
-                    if (!quoted) {
-                        ++cr;
-                    } else {
-                        cell += byte;
-                    }
-                    break;
-
-                case LF:
-                    if (!quoted) {
-                        ++lf;
-                        row.push_back(cell);
-                        mData.push_back(row);
-                        cell.erase();
-                        row.clear();
-                    } else {
-                        cell += byte;
-                    }
-                    break;
-
-                default:
-                    if (!quoted && cell.back() == '"') {
-                        throw csv_unescaped_quote_exception();
-                    }
-                    cell += byte;
-            }
-        }
-
-        for (std::string buffer(bufLength, '\0'); file.read(&buffer[0], bufLength -1).gcount() > 0; ) {
-            std::string::size_type content_size = static_cast<std::string::size_type>(file.gcount());
-            if (content_size < (bufLength - 1) || file.eof()) {
-                buffer.resize(content_size + 1);
-                if (buffer.find(LF, content_size - 1) == std::string::npos) {
-                    buffer[content_size] = LF; // append line break to last line
-                } else {
-                    buffer.resize(content_size);
-                }
-            }
-            if (cell.empty()) {
-                quoted = true;
-            } else if (!quoted && cell.back() == '"') {
-                quoted = true;
-                break;
-            } else if (cell.front() == '"') {
-                quoted = false;
+//        std::copy(std::begin(reader), std::end(reader), std::back_inserter(mData));
+        for (const auto& field: *reader) {
+            if (field == "\n") {
+                std::cout << std::endl;
             } else {
-
+                std::cout << field << ", ";
             }
-            for (const char &byte: buffer) {
-                switch (byte) {
-                    case '"':
-                        if (!quoted) {
-                            if (cell.empty() || cell.front() == '"') {
-                                quoted = true;
-                            } else {
-                                throw csv_quote_inside_non_quote_field_exception();
-                            }
-                        } else if (cell.front() != '"') {
-
-                        } else if (cell.back() == '"') {
-                            quoted = false;
-                            break;
-                        } else {
-                            throw csv_unescaped_quote_exception();
-                        }
-                        cell += byte;
-                        break;
-
-                    case ',':
-                        if (!quoted) {
-                            row.push_back(cell);
-                            cell.erase();
-                        } else {
-                            cell += byte;
-                        }
-                        break;
-
-                    case CR:
-                        if (!quoted) {
-                            ++cr;
-                        } else {
-                            cell += byte;
-                        }
-                        break;
-
-                    case LF:
-                        if (!quoted) {
-                            ++lf;
-                            row.push_back(cell);
-                            mData.push_back(row);
-                            cell.erase();
-                            row.clear();
-                        } else {
-                            cell += byte;
-                        }
-                        break;
-
-                    default:
-                        if (!quoted && cell.back() == '"') {
-                            throw csv_unescaped_quote_exception();
-                        }
-                        cell += byte;
-                }
-            }
+            std::cout << '\n';
         }
-
-        // Handle last line without linebreak
-//            if (!cell.empty() || !row.empty()) {
-//                row.push_back(cell);
-//                cell.clear();
-//                mData.push_back(row);
-//                row.clear();
-//            }
 
         // Assume CR/LF if at least half the linebreaks have CR
 //            mProperties.mHasCR = (cr > (lf / 2));
