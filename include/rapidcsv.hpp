@@ -30,10 +30,33 @@
 #include <array>
 
 #include "csv_reader.hpp"
-
-static constexpr auto bufLength = 64 * 1024;
+#include "csv_iterator.hpp"
+#include "csv_constants.hpp"
 
 namespace rapidcsv {
+
+    using rapidcsv::read::iterator::CSVIterator;
+    using rapidcsv::read::Reader;
+
+//    template <typename T>
+//    CSVIterator<T>& begin(std::unique_ptr<Reader<T>>& reader_ptr) {
+//        return reader_ptr->begin();
+//    }
+//
+//    template <typename T>
+//    CSVIterator<T>& end(std::unique_ptr<Reader<T>>& reader_ptr) {
+//        return reader_ptr->end();
+//    }
+//
+//    template <typename T>
+//    const CSVIterator<T>& begin(std::unique_ptr<Reader<T>>& reader_ptr) {
+//        return reader_ptr->begin();
+//    }
+//
+//    template <typename T>
+//    const CSVIterator<T>& end(std::unique_ptr<Reader<T>>& reader_ptr) {
+//        return reader_ptr->end();
+//    }
 
     namespace detail {
         template <class ...T>
@@ -454,18 +477,21 @@ private:
 
         std::ifstream file(path, std::ios::in | std::ios::binary);
 
-        auto reader = fieldReader(std::istreambuf_iterator<char>(file),
-                                  std::istreambuf_iterator<char>{});
+        auto reader = rowReader(std::istreambuf_iterator<char>(file),
+                                std::istreambuf_iterator<char>{});
+
+        mData.assign(std::begin(reader), std::end(reader));
 
 //        std::copy(std::begin(reader), std::end(reader), std::back_inserter(mData));
-        for (const auto& field: *reader) {
-            if (field == "\n") {
-                std::cout << std::endl;
-            } else {
-                std::cout << field << ", ";
-            }
-            std::cout << '\n';
-        }
+
+//        for (const auto& field: reader) {
+//            if (field == "\n") {
+//                std::cout << std::endl;
+//            } else {
+//                std::cout << field << ", ";
+//            }
+//            std::cout << '\n';
+//        }
 
         // Assume CR/LF if at least half the linebreaks have CR
 //            mProperties.mHasCR = (cr > (lf / 2));

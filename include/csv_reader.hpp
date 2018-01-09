@@ -23,21 +23,15 @@ namespace rapidcsv {
     using read::CSVFieldReader;
     using read::CSVRowReader;
 
-
     template <typename _StreamT>
     std::unique_ptr<Reader<std::string>> fieldReader(_StreamT&& begin, _StreamT&& end) {
         return std::make_unique<CSVFieldReader<_StreamT>>(std::forward<_StreamT>(begin), std::forward<_StreamT>(end));
     }
 
     template <typename _StreamT>
-    std::unique_ptr<Reader<std::vector<std::string>>>&& rowReader(const _StreamT& begin, const _StreamT& end) {
+    std::unique_ptr<Reader<std::vector<std::string>>> rowReader(_StreamT&& begin, _StreamT&& end) {
         return std::make_unique<CSVRowReader<_StreamT>>(std::forward<_StreamT>(begin), std::forward<_StreamT>(end));
     }
-
-//    template <typename T, typename _StreamT, typename _ReaderT>
-//    std::unique_ptr<Reader<T>> reader(_StreamT&& begin, _StreamT&& end) {
-//        return std::make_unique<_ReaderT>(std::forward<_StreamT>(begin), std::forward<_StreamT>(end));
-//    };
 }
 
 #endif // RAPIDCSV_CSV_READER_HPP

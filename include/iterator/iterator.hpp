@@ -2,16 +2,14 @@
 #define RAPIDCSV_ITERATOR_HPP
 
 #include <string>
+#include <iterator>
 #include "reader/reader.hpp"
 #include "csv_except.hpp"
 
 namespace rapidcsv {
     namespace read {
         namespace iterator {
-            template <typename T>
-            class CSVIterator {
-                bool has_value;
-                static CSVIterator<T> iterator_empty;
+            template <typename T> class CSVIterator: public std::iterator<std::forward_iterator_tag, T> {
 
             protected:
                 Reader<T>* _parser;
@@ -50,6 +48,10 @@ namespace rapidcsv {
 
             protected:
                 CSVIterator(): _parser(nullptr) {}
+
+            private:
+                bool has_value;
+                static CSVIterator<T> iterator_empty;
             };
 
             template <typename T>
