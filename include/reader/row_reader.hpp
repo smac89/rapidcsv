@@ -24,9 +24,10 @@ namespace rapidcsv {
 
         public:
 
-            CSVRowReader(const _StreamT& begin, const _StreamT& end):
-                    Reader(CSVRowIterator(this), std::move(CSVIterator<VS>::end_iterator())),
-                    fieldReader(begin, end), _begin(fieldReader.begin()), _end(fieldReader.end()) {
+            explicit CSVRowReader(_StreamT &&begin, _StreamT &&end):
+                    Reader(CSVRowIterator(this), CSVIterator<VS>::end_iterator()),
+                    fieldReader(std::forward<_StreamT>(begin), std::forward<_StreamT>(end)),
+                    _begin(fieldReader.begin()), _end(fieldReader.end()) {
             }
 
             bool has_next() {

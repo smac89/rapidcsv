@@ -16,19 +16,19 @@ namespace rapidcsv {
         using iterator::CSVFieldIterator;
         using iterator::CSVIterator;
 
-        template <class StreamIter>
+        template <typename _StreamT>
         class CSVFieldReader: public Reader<std::string> {
         protected:
             std::string current;
-            StreamIter _begin, _end;
+            _StreamT _begin, _end;
 
         private:
             bool _start_quoted_field, _end_quoted_field, _is_quoted_field, _is_next_line;
 
         public:
-            CSVFieldReader(const StreamIter &begin, const StreamIter &end):
-                    Reader(CSVFieldIterator(this), std::move(CSVIterator<std::string>::end_iterator())),
-                    current('\0'), _begin(begin), _end(end) {
+            explicit CSVFieldReader(_StreamT &&begin, _StreamT &&end):
+                    Reader(CSVFieldIterator(this), CSVIterator<std::string>::end_iterator()),
+                    _begin(std::move(begin)), _end(std::move(end)) {
                 reset();
                 if (has_next()) {
                     parseNext();

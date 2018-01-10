@@ -9,13 +9,14 @@
 namespace rapidcsv {
     namespace read {
         namespace iterator {
-            template <typename T> class CSVIterator: public std::iterator<std::forward_iterator_tag, T> {
+            template <typename T>
+            class CSVIterator: public std::iterator<std::forward_iterator_tag, T> {
 
             protected:
                 Reader<T>* _parser;
                 T value;
             public:
-                CSVIterator(Reader<T>* parser): _parser(parser) {}
+                explicit CSVIterator(Reader<T>* parser): _parser(parser) {}
 
                 virtual const T operator *() const {
                     if (!has_value) {
@@ -47,7 +48,7 @@ namespace rapidcsv {
                 virtual ~CSVIterator() {}
 
             protected:
-                CSVIterator(): _parser(nullptr) {}
+                explicit CSVIterator(): _parser(nullptr) {}
 
             private:
                 bool has_value;

@@ -16,7 +16,7 @@ namespace rapidcsv {
         template <typename T>
         class Reader {
         protected:
-            Reader(CSVIterator<T>&& _iterator, CSVIterator<T>&& _end_iterator):
+            explicit Reader(CSVIterator<T>&& _iterator, CSVIterator<T>&& _end_iterator):
                     iterator(_iterator), end_iterator(_end_iterator) {}
 
         public:

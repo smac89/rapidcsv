@@ -24,13 +24,13 @@ namespace rapidcsv {
     using read::CSVRowReader;
 
     template <typename _StreamT>
-    std::unique_ptr<Reader<std::string>> fieldReader(_StreamT&& begin, _StreamT&& end) {
-        return std::make_unique<CSVFieldReader<_StreamT>>(std::forward<_StreamT>(begin), std::forward<_StreamT>(end));
+    std::shared_ptr<Reader<std::string>> fieldReader(_StreamT begin, _StreamT end) {
+        return std::make_shared<CSVFieldReader<_StreamT>>(std::move(begin), std::move(end));
     }
 
     template <typename _StreamT>
-    std::unique_ptr<Reader<std::vector<std::string>>> rowReader(_StreamT&& begin, _StreamT&& end) {
-        return std::make_unique<CSVRowReader<_StreamT>>(std::forward<_StreamT>(begin), std::forward<_StreamT>(end));
+    std::shared_ptr<Reader<std::vector<std::string>>> rowReader(_StreamT begin, _StreamT end) {
+        return std::make_shared<CSVRowReader<_StreamT>>(std::move(begin), std::move(end));
     }
 }
 
