@@ -7,7 +7,7 @@ namespace rapidcsv {
     namespace except {
         struct csv_quote_inside_non_quote_field_exception: public std::exception {
             virtual const char* what() const noexcept {
-                return "Quotes are not allowed inside non-quoted fields";
+                return "Quotes are only allowed inside quoted fields";
             }
         };
 
@@ -25,10 +25,16 @@ namespace rapidcsv {
     }
 
     namespace read {
+        struct csv_nothing_to_read_exception: public std::exception {
+            virtual const char* what() const noexcept {
+                return "The reader has run out of bytes!";
+            }
+        };
+
         namespace iterator {
             struct past_the_end_iterator_exception: public std::runtime_error {
                 past_the_end_iterator_exception():
-                        std::runtime_error("Iterator has iterated past the end") { }
+                        std::runtime_error("Iterator has gone past the end") { }
             };
 
             struct empty_iterator_exception: public std::runtime_error {

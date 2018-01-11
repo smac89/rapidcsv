@@ -24,7 +24,8 @@ namespace rapidcsv {
             _StreamT _begin, _end;
 
         private:
-            bool _start_quoted_field, _end_quoted_field, _is_quoted_field, _is_next_line;
+            bool _start_quoted_field, _end_quoted_field,
+                    _is_quoted_field, _is_return, _is_next_line, _is_comma;
 
         public:
             explicit CSVFieldReader(_StreamT &&begin, _StreamT &&end):
@@ -34,14 +35,25 @@ namespace rapidcsv {
             }
 
             std::string next() {
-                if (_is_next_line) {
-                    _is_next_line = false;
-                    current = LF;
-                    return current;
+                if (!has_next()) {
+                    throw csv_nothing_to_read_exception();
                 }
 
-                if (!has_next()) {
-                    throw std::out_of_range("The reader has run out of bytes!");
+                if (_is_return) {
+                    if (*_begin == LF) {
+                        _begin++;
+                    }
+                    _is_next_line = true;
+                }
+
+                if (_is_next_line) {
+                    reset();
+                    return std::string() + LF;
+                }
+
+                if (_is_comma && stream_empty()) {
+                    reset();
+                    return "";
                 }
                 reset();
                 parseNext();
@@ -49,21 +61,16 @@ namespace rapidcsv {
             }
 
             bool has_next() const {
-                return _begin != _end;
+                return _is_next_line || _is_comma || _is_return || !stream_empty();
             }
 
         private:
-            void parseNext() {
-                if (_is_next_line) {
-                    if (*_begin == LF) {
-                        _begin++;
-                    }
-                    current = LF;
-                    _is_next_line = false;
-                    return;
-                }
+            bool stream_empty() const {
+                return _begin == _end;
+            }
 
-                while (_begin != _end) {
+            void parseNext() {
+                while (!stream_empty()) {
                     char byte = *_begin++;
                     switch (byte) {
                         case '"':
@@ -84,6 +91,7 @@ namespace rapidcsv {
 
                         case ',':
                             if (!_is_quoted_field || _end_quoted_field) {
+                                _is_comma = true;
                                 return;
                             }
                             current += byte;
@@ -91,7 +99,7 @@ namespace rapidcsv {
 
                         case CR:
                             if (!_is_quoted_field || _end_quoted_field) {
-                                _is_next_line = true;
+                                _is_return = true;
                                 return;
                             }
                             current += byte;
@@ -124,7 +132,9 @@ namespace rapidcsv {
                 _start_quoted_field = false;
                 _end_quoted_field = true;
                 _is_quoted_field = false;
+                _is_return = false;
                 _is_next_line = false;
+                _is_comma = false;
                 current.erase();
             }
         };
