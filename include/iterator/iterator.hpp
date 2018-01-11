@@ -11,34 +11,37 @@ namespace rapidcsv {
         namespace iterator {
             template <typename T>
             class CSVIterator: public std::iterator<std::forward_iterator_tag, T> {
-
+                explicit CSVIterator(): _reader(nullptr) {}
             protected:
-                Reader<T>* _parser;
+                Reader<T>* _reader;
                 T value;
             public:
-                explicit CSVIterator(Reader<T>* parser): _parser(parser) {}
+                explicit CSVIterator(Reader<T>* reader): _reader(reader) { }
 
-                virtual const T operator *() const {
-                    if (!has_value) {
+                virtual const T operator *() {
+                    if (nullptr == _reader) {
                         throw empty_iterator_exception();
+                    } else if (!has_init) {
+                        this->operator++();
+                        has_init = true;
                     }
                     return value;
                 }
 
                 virtual CSVIterator<T>& operator++ () {
-                    if (!_parser->has_next()) {
-                        if (has_value) {
-                            has_value = false;
-                            return iterator_empty;
-                        }
+                    if (nullptr == _reader) {
                         throw past_the_end_iterator_exception();
                     }
-                    value = std::move(_parser->next());
+                    if (_reader->has_next()) {
+                        value = std::move(_reader->next());
+                    } else {
+                        _reader = nullptr;
+                    }
                     return *this;
                 }
 
                 virtual bool operator != (CSVIterator<T>& other) {
-                    return this != &other;
+                    return _reader != other._reader;
                 }
 
                 static CSVIterator<T> end_iterator() {
@@ -47,11 +50,8 @@ namespace rapidcsv {
 
                 virtual ~CSVIterator() {}
 
-            protected:
-                explicit CSVIterator(): _parser(nullptr) {}
-
             private:
-                bool has_value;
+                bool has_init = false;
                 static CSVIterator<T> iterator_empty;
             };
 

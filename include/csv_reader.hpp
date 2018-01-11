@@ -18,19 +18,14 @@ namespace std {
 #endif
 
 namespace rapidcsv {
-
-    using read::Reader;
-    using read::CSVFieldReader;
-    using read::CSVRowReader;
-
     template <typename _StreamT>
-    std::shared_ptr<Reader<std::string>> fieldReader(_StreamT begin, _StreamT end) {
-        return std::make_shared<CSVFieldReader<_StreamT>>(std::move(begin), std::move(end));
+    std::shared_ptr<read::Reader<std::string>> fieldReader(_StreamT begin, _StreamT end) {
+        return std::make_shared<read::CSVFieldReader<_StreamT>>(std::move(begin), std::move(end));
     }
 
     template <typename _StreamT>
-    std::shared_ptr<Reader<std::vector<std::string>>> rowReader(_StreamT begin, _StreamT end) {
-        return std::make_shared<CSVRowReader<_StreamT>>(std::move(begin), std::move(end));
+    std::shared_ptr<read::Reader<std::vector<std::string>>> rowReader(_StreamT begin, _StreamT end) {
+        return std::make_shared<read::CSVRowReader<_StreamT>>(std::move(begin), std::move(end));
     }
 }
 

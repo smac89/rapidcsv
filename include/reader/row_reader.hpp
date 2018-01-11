@@ -3,7 +3,6 @@
 
 #include <string>
 #include <utility>
-#include <algorithm>
 #include "reader.hpp"
 #include "field_reader.hpp"
 #include "iterator/row_iterator.hpp"
@@ -30,7 +29,7 @@ namespace rapidcsv {
                     _begin(fieldReader.begin()), _end(fieldReader.end()) {
             }
 
-            bool has_next() {
+            bool has_next() const {
                 return fieldReader.has_next();
             };
 

@@ -20,9 +20,9 @@ namespace rapidcsv {
                     iterator(_iterator), end_iterator(_end_iterator) {}
 
         public:
-            virtual bool has_next() = 0;
+            virtual bool has_next() const = 0;
             virtual T next() = 0;
-            virtual ~Reader() {}
+            virtual ~Reader<T>() {}
 
             virtual CSVIterator<T>& begin() {
                 return iterator;

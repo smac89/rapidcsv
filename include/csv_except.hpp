@@ -16,6 +16,12 @@ namespace rapidcsv {
                 return "Quotes appearing inside a field, are to be escaped with another quote";
             }
         };
+
+        struct csv_unterminated_quote_exception: public std::exception {
+            virtual const char* what() const noexcept {
+                return "Quoted field was not terminated by a closing quote";
+            }
+        };
     }
 
     namespace read {

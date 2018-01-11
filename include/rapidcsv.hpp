@@ -28,6 +28,7 @@
 #include <cstddef>
 #include <utility>
 #include <array>
+#include <memory>
 
 #include "csv_reader.hpp"
 #include "csv_iterator.hpp"
@@ -75,9 +76,9 @@ namespace rapidcsv {
 
     template <typename P>
     class CSVProperty {
+        friend class Properties;
         P value;
     public:
-        CSVProperty(): value(std::declval<P>()) {}
         CSVProperty(const P& _value): value(_value) {}
     };
 
@@ -117,7 +118,8 @@ namespace rapidcsv {
                             const int pRowNameIdx = 0)
                 : mPath(pPath), mColumnNameIdx(pColumnNameIdx), mRowNameIdx(pRowNameIdx),
                   mHasCR(false), mhasRowLabel(false), mHasColLabel(false),
-                  _quote('"'), _fieldSep(','), _hasColLabel(false), _hasRowLabel(false), _rowSep({'\n'}) {}
+                  _quote('"'), _fieldSep(','), _hasColLabel(false), _hasRowLabel(false), _rowSep({'\n'}) {
+        }
 
         Properties& rowSep(const CSVRowSep& rowSep) {
             this->_rowSep = rowSep;
@@ -453,12 +455,13 @@ private:
 //        std::copy(std::begin(reader), std::end(reader), std::back_inserter(mData));
 
         for (const auto& field: reader) {
-            if (field == "\n") {
-                std::cout << std::endl;
-            } else {
-                std::cout << field << ", ";
-            }
-            std::cout << '\n';
+//            if (field == "\n") {
+//                std::cout << std::endl;
+//            } else {
+//                std::cout << field << ", ";
+//            }
+//            std::cout << field << '\n';
+            std::cout << field << '\n';
         }
 
         // Assume CR/LF if at least half the linebreaks have CR

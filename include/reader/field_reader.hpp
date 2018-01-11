@@ -13,6 +13,7 @@ namespace rapidcsv {
 
         using except::csv_unescaped_quote_exception;
         using except::csv_quote_inside_non_quote_field_exception;
+        using except::csv_unterminated_quote_exception;
         using iterator::CSVFieldIterator;
         using iterator::CSVIterator;
 
@@ -30,31 +31,25 @@ namespace rapidcsv {
                     Reader(CSVFieldIterator(this), CSVIterator<std::string>::end_iterator()),
                     _begin(std::move(begin)), _end(std::move(end)) {
                 reset();
-                if (has_next()) {
-                    parseNext();
-                }
             }
 
             std::string next() {
+                if (_is_next_line) {
+                    _is_next_line = false;
+                    current = LF;
+                    return current;
+                }
+
                 if (!has_next()) {
-                    throw std::out_of_range("The parser has run out of bytes!");
+                    throw std::out_of_range("The reader has run out of bytes!");
                 }
                 reset();
                 parseNext();
                 return current;
             }
 
-            bool has_next() {
-                if (_begin != _end) {
-                    return true;
-                }
-
-                if (_is_next_line) {
-                    current = LF;
-                    _is_next_line = false;
-                    return true;
-                }
-                return false;
+            bool has_next() const {
+                return _begin != _end;
             }
 
         private:
@@ -75,6 +70,7 @@ namespace rapidcsv {
                             if (current.empty()) {
                                 _is_quoted_field = true;
                                 _start_quoted_field = true;
+                                _end_quoted_field = false;
                             } else if (!_is_quoted_field) {
                                 throw csv_quote_inside_non_quote_field_exception();
                             } else if (!_end_quoted_field) {
@@ -116,6 +112,11 @@ namespace rapidcsv {
                             current += byte;
                     }
                 }
+
+                if (_is_quoted_field && !_end_quoted_field) {
+                    throw csv_unterminated_quote_exception();
+                }
+
                 _is_next_line = true;
             }
 
