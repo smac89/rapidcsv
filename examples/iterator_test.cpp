@@ -1,10 +1,9 @@
 #include <iostream>
 #include <sstream>
-#include <iterator>
 #include <rapidcsv.hpp>
 
 auto main() -> int {
-    std::istringstream in("\"dsfdsfsdfdsf\",sdfsdfdsf\"\n");
+    std::istringstream in("\"dsfdsfsdfdsf\",sdfsdfdsf;");
 
     auto csvFieldReader = rapidcsv::fieldReader(
             std::istreambuf_iterator<char>{in},

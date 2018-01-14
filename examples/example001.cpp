@@ -3,7 +3,7 @@
 #include <rapidcsv.hpp>
 
 int main() {
-    rapidcsv::Document doc("../tests/msft.csv");
+    rapidcsv::Document doc("msft.csv");
 
     std::vector<float> close = doc.GetColumn<float>("Close");
     std::cout << "Read " << close.size() << " values." << std::endl;

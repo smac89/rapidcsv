@@ -14,7 +14,6 @@
 #pragma once
 
 #include <algorithm>
-#include <fstream>
 #include <iostream>
 #include <map>
 #include <unordered_set>
@@ -29,6 +28,7 @@
 #include <utility>
 #include <array>
 #include <memory>
+#include <fstream>
 
 #include "csv_reader.hpp"
 #include "csv_iterator.hpp"
@@ -447,22 +447,10 @@ private:
     void ReadCsv(const std::string &path) {
         std::ifstream file(path, std::ios::in | std::ios::binary);
 
-        auto reader = fieldReader(std::istreambuf_iterator<char>{file},
+        auto reader = rowReader(std::istreambuf_iterator<char>{file},
                                   std::istreambuf_iterator<char>{});
 
-//        mData.assign(std::begin(reader), std::end(reader));
-
-//        std::copy(std::begin(reader), std::end(reader), std::back_inserter(mData));
-
-        for (const auto& field: reader) {
-//            if (field == "\n") {
-//                std::cout << std::endl;
-//            } else {
-//                std::cout << field << ", ";
-//            }
-//            std::cout << field << '\n';
-            std::cout << field << '\n';
-        }
+        std::copy(std::begin(reader), std::end(reader), std::back_inserter(mData));
 
         // Assume CR/LF if at least half the linebreaks have CR
 //            mProperties.mHasCR = (cr > (lf / 2));
