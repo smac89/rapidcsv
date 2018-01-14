@@ -31,7 +31,7 @@ int main() {
     unittest::WriteFile(path, csv);
 
     try {
-        rapidcsv::Document doc(rapidcsv::Properties(path, -1, -1));
+        rapidcsv::Document doc(rapidcsv::PropertiesBuilder().filePath(path));
 
         unittest::ExpectEqual(int, doc.GetCell<int>(0, 0), 100);
         unittest::ExpectEqual(int, doc.GetCell<int>(1, 0), 1000);

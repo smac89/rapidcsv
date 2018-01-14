@@ -22,7 +22,7 @@ int main() {
     unittest::WriteFile(path, csv);
 
     try {
-        rapidcsv::Document doc(rapidcsv::Properties(path, -1, -1));
+        rapidcsv::Document doc(rapidcsv::PropertiesBuilder().filePath(path));
 
         unittest::ExpectEqual(std::string, doc.GetCell<std::string>(0, 0), "1997");
         unittest::ExpectEqual(std::string, doc.GetCell<std::string>(1, 0), "Ford");

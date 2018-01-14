@@ -15,7 +15,7 @@ int main() {
     unittest::WriteFile(path, csv);
 
     try {
-        rapidcsv::Document doc(rapidcsv::Properties(path, 0, -1));
+        rapidcsv::Document doc(rapidcsv::PropertiesBuilder().filePath(path).hasColLabel());
 
         std::vector<int> ints;
         std::vector<std::string> strs;

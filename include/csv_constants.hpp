@@ -4,7 +4,7 @@
 namespace rapidcsv {
     static constexpr char CR = '\r';
     static constexpr char LF = '\n';
-    static constexpr const char* CRLF = R"(\r\n)";
+    static constexpr const char CRLF[3] = "\r\n";
 
     static constexpr auto bufLength = 64 * 1024;
 }

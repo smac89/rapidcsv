@@ -18,7 +18,7 @@ int main() {
     unittest::WriteFile(path, csv);
 
     try {
-        rapidcsv::Document doc(rapidcsv::Properties(path, -1, -1));
+        rapidcsv::Document doc(rapidcsv::PropertiesBuilder().filePath(path));
 
         doc.SetColumn<int>(0, std::vector<int>({3, 4}));
         doc.SetColumn<int>(1, std::vector<int>({9, 16}));

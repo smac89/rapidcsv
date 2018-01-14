@@ -20,7 +20,7 @@ int main() {
     unittest::WriteFile(path, csv);
 
     try {
-        rapidcsv::Document doc(rapidcsv::Properties(path, -1, -1));
+        rapidcsv::Document doc(rapidcsv::PropertiesBuilder().filePath(path));
 
         doc.RemoveRow(3);
         doc.RemoveRow(0);

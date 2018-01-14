@@ -24,7 +24,7 @@ int main() {
     unittest::WriteFile(path, csv);
 
     try {
-        rapidcsv::Document doc(rapidcsv::Properties(path, 0, -1));
+        rapidcsv::Document doc(rapidcsv::PropertiesBuilder().filePath(path).hasColLabel());
 
         doc.RemoveColumn("C");
         doc.RemoveColumn(0);

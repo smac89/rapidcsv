@@ -21,6 +21,8 @@
 #include <string>
 #include <list>
 #include <vector>
+#include <tuple>
+#include <functional>
 #include <type_traits>
 #include <exception>
 #include <iterator>
@@ -35,19 +37,6 @@
 #include "csv_constants.hpp"
 
 namespace rapidcsv {
-
-    namespace detail {
-        template <class ...T>
-        struct are_same;
-
-        template <class A, class B, class ...T>
-        struct are_same<A, B, T...> {
-            enum: bool { value = std::is_same<A, B>::value && are_same<B, T...>::value };
-        };
-
-        template <class A>
-        struct are_same<A> : std::true_type {};
-    }
 
     namespace convert {
         template<typename T>
@@ -66,14 +55,6 @@ namespace rapidcsv {
         }
     }
 
-    enum class CSVPropertyType {
-        QUOTE,
-        FIELD_SEP,
-        COL_LABEL,
-        ROW_LABEL,
-        ROW_SEP
-    };
-
     template <typename P>
     class CSVProperty {
         friend class Properties;
@@ -84,6 +65,8 @@ namespace rapidcsv {
 
     struct CSVRowSep: public CSVProperty<std::array<char, 2>> {
         using CSVProperty::CSVProperty;
+        CSVRowSep(const char (&rowSep)[2]): CSVProperty({rowSep[0]}) {}
+        CSVRowSep(const char (&rowSep)[3]): CSVProperty({rowSep[0], rowSep[1]}) {}
     };
 
     struct CSVHasRowLabel: public CSVProperty<bool> {
@@ -103,6 +86,7 @@ namespace rapidcsv {
     };
 
     class Properties {
+        friend class PropertiesBuilder;
     public:
         std::string mPath;
         const int mColumnNameIdx;
@@ -112,38 +96,35 @@ namespace rapidcsv {
         const bool mHasColLabel;
 
     public:
-        template <typename... Prop>
-        explicit Properties(const std::string &pPath = "",
-                            const int pColumnNameIdx = 0,
-                            const int pRowNameIdx = 0)
-                : mPath(pPath), mColumnNameIdx(pColumnNameIdx), mRowNameIdx(pRowNameIdx),
+        Properties(): Properties("", {CRLF}, {'"'}, {','}, {false}, {false}) {}
+
+        explicit Properties(const std::string &pPath, const CSVRowSep& rowSep, const CSVQuote& quote,
+                            const CSVFieldSep& fieldSep, const CSVHasColLabel& hasColLabel,
+                            const CSVHasRowLabel& hasRowLabel)
+                : mPath(pPath), mColumnNameIdx(0), mRowNameIdx(0),
                   mHasCR(false), mhasRowLabel(false), mHasColLabel(false),
-                  _quote('"'), _fieldSep(','), _hasColLabel(false), _hasRowLabel(false), _rowSep({'\n'}) {
+                  _quote(quote), _fieldSep(fieldSep), _hasColLabel(hasColLabel),
+                  _hasRowLabel(hasRowLabel), _rowSep(rowSep) {
         }
 
-        Properties& rowSep(const CSVRowSep& rowSep) {
-            this->_rowSep = rowSep;
-            return *this;
+        char quote() const {
+            return _quote.value;
         }
 
-        Properties& quote(const CSVQuote& quote) {
-            this->_quote = quote;
-            return *this;
+        char fieldSep() const {
+            return _fieldSep.value;
         }
 
-        Properties& fieldSep(const CSVFieldSep& fieldSep) {
-            this->_fieldSep = fieldSep;
-            return *this;
+        bool hasColLabel() const {
+            return _hasColLabel.value;
         }
 
-        Properties& hasColLabel(const CSVHasColLabel& hasColLabel) {
-            this->_hasColLabel = hasColLabel;
-            return *this;
+        bool hasRowLabel() const {
+            return _hasRowLabel.value;
         }
 
-        Properties& hasRowLabel(const CSVHasRowLabel& hasRowLabel) {
-            this->_hasRowLabel = hasRowLabel;
-            return *this;
+        std::array<char, 2> rowSep() const {
+            return _rowSep.value;
         }
 
     private:
@@ -152,6 +133,75 @@ namespace rapidcsv {
         CSVHasColLabel _hasColLabel;
         CSVHasRowLabel _hasRowLabel;
         CSVRowSep _rowSep;
+    };
+
+    class PropertiesBuilder {
+    public:
+        PropertiesBuilder(): PropertiesBuilder(Properties()) {}
+
+        explicit PropertiesBuilder (const Properties& properties):
+                _quote(properties._quote), _fieldSep(properties._fieldSep),
+                _hasColLabel(properties._hasColLabel), _hasRowLabel(properties._hasRowLabel),
+                _rowSep(properties._rowSep) {}
+
+        explicit PropertiesBuilder (Properties&& properties):
+                _quote(std::move(properties)._quote), _fieldSep(std::move(properties)._fieldSep),
+                _hasColLabel(std::move(properties)._hasColLabel), _hasRowLabel(std::move(properties)._hasRowLabel),
+                _rowSep(std::move(properties)._rowSep) {}
+
+        PropertiesBuilder& rowSep(const std::array<char, 2> rowSep) {
+            this->_rowSep = CSVRowSep(std::move(rowSep));
+            return *this;
+        }
+
+        PropertiesBuilder& rowSep(const char (&rowSep)[3]) {
+            this->_rowSep = CSVRowSep(rowSep);
+            return *this;
+        }
+
+        PropertiesBuilder& rowSep(const char (&rowSep)[2]) {
+            this->_rowSep = CSVRowSep(rowSep);
+            return *this;
+        }
+
+        PropertiesBuilder& quote(const char quote) {
+            this->_quote = CSVQuote(quote);
+            return *this;
+        }
+
+        PropertiesBuilder& fieldSep(const char fieldSep) {
+            this->_fieldSep = CSVFieldSep(fieldSep);
+            return *this;
+        }
+
+        PropertiesBuilder& hasColLabel() {
+            this->_hasColLabel = CSVHasColLabel(true);
+            return *this;
+        }
+
+        PropertiesBuilder& hasRowLabel() {
+            this->_hasRowLabel = CSVHasRowLabel(true);
+            return *this;
+        }
+
+        PropertiesBuilder& filePath(const std::string& filePath) {
+            this->path = filePath;
+            return *this;
+        }
+
+        Properties build() const {
+            return Properties(path, _rowSep, _quote, _fieldSep, _hasColLabel, _hasRowLabel);
+        }
+
+        operator Properties() const { return build(); }
+
+    private:
+        CSVQuote _quote;
+        CSVFieldSep _fieldSep;
+        CSVHasColLabel _hasColLabel;
+        CSVHasRowLabel _hasRowLabel;
+        CSVRowSep _rowSep;
+        std::string path;
     };
 
     class Document;
@@ -175,18 +225,22 @@ private:
     std::vector<std::vector<std::string>> mData;
     std::map<std::string, std::size_t> mColumnNames;
     std::map<std::string, std::size_t> mRowNames;
+    std::size_t rowCount = 0;
+    std::size_t columnCount = 0;
 
 public:
     // Contructors --------------------------------------------------------
-    explicit Document(const std::string pPath) {
-        mProperties.mPath = pPath;
-        ReadCsv(mProperties.mPath);
+    explicit Document(const std::string& pPath): Document(PropertiesBuilder().filePath(pPath)) { }
+
+    explicit Document(const Properties &pProperties): mProperties(pProperties) {
+        if (!mProperties.mPath.empty()) {
+            read_csv(mProperties.mPath);
+        }
     }
 
-    explicit Document(const Properties &pProperties)
-            : mProperties(pProperties) {
+    explicit Document(Properties &&pProperties): mProperties(std::move(pProperties)) {
         if (!mProperties.mPath.empty()) {
-            ReadCsv(mProperties.mPath);
+            read_csv(mProperties.mPath);
         }
     }
 
@@ -196,54 +250,69 @@ public:
             mColumnNames(pDocument.mColumnNames),
             mRowNames(pDocument.mRowNames) {}
 
-    explicit Document(const Document &&document) :
-            mProperties(std::move(document.mProperties)),
-            mData(std::move(document.mData)),
-            mColumnNames(std::move(document.mColumnNames)),
-            mRowNames(std::move(document.mRowNames)) {}
+    explicit Document(Document &&document) :
+            mProperties(std::move(document).mProperties),
+            mData(std::move(document).mData),
+            mColumnNames(std::move(document).mColumnNames),
+            mRowNames(std::move(document).mRowNames) {}
 
     // Destructors --------------------------------------------------------
     virtual ~Document() {}
 
     // Document Methods ---------------------------------------------------
-    void Load(const std::string& pPath) {
-        mProperties.mPath = pPath;
-        ReadCsv(mProperties.mPath);
-    }
+    void Load() { Load(mProperties.mPath); }
+    void Load(const std::string& pPath) { read_csv(pPath); }
 
-    void Save(const std::string &pPath = "") {
-        if (!pPath.empty()) {
-            mProperties.mPath = pPath;
-        }
-        write_csv();
-    }
+    void Save() const { Save(mProperties.mPath); }
+    void Save(const std::string &pPath) const  { write_csv(pPath); }
 
     // Column Methods -----------------------------------------------------
+
+//    template<typename T, std::size_t colIndex = 0>
+//    std::vector<T> GetColumn(const size_t colIndex) const {
+//        const std::size_t columnIdx = colIndex + (mProperties.hasRowLabel() ? 1 : 0);
+//        if (mProperties.hasRowLabel()) {
+//
+//        }
+//        std::vector<T> column;
+//        for (auto itRow = mData.begin(); itRow != mData.end(); ++itRow) {
+//            if (std::distance(mData.begin(), itRow) > mProperties.mColumnNameIdx) {
+//                T val = convert::convert_to_val<T>(itRow->at(columnIdx));
+//                column.push_back(val);
+//            }
+//        }
+//        return column;
+//    }
+
     template<typename T>
-    std::vector<T> GetColumn(const size_t pColumnIdx) const {
-        const std::size_t columnIdx = pColumnIdx + (mProperties.mRowNameIdx + 1);
+    std::vector<T> GetColumn(const size_t columnIndex) const {
+        const std::size_t normalizedIndex = columnIndex + (mProperties.hasRowLabel() ? 1 : 0);
+
         std::vector<T> column;
-        for (auto itRow = mData.begin(); itRow != mData.end(); ++itRow) {
-            if (std::distance(mData.begin(), itRow) > mProperties.mColumnNameIdx) {
-                T val = convert::convert_to_val<T>(itRow->at(columnIdx));
-                column.push_back(val);
-            }
-        }
+        std::transform((mProperties.hasColLabel() ? std::next(std::begin(mData)) : std::begin(mData)),
+                       std::end(mData),
+                       std::back_inserter(column),
+                       [&normalizedIndex](const std::vector<std::string>& row) {
+                           return convert::convert_to_val<T>(row.at(normalizedIndex));
+                       }
+        );
         return column;
     }
 
     template<typename T>
-    std::vector<T> GetColumn(const std::string &pColumnName) const {
-        const int columnIdx = GetColumnIdx(pColumnName);
-        if (columnIdx < 0) {
-            throw std::out_of_range("column not found: " + pColumnName);
+    std::vector<T> GetColumn(const std::string &columnName) const {
+        std::size_t columnIndex;
+        bool found = false;
+        std::tie(found, columnIndex) = GetColumnIdx(columnName);
+        if (!found) {
+            throw std::out_of_range("column not found: " + columnName);
         }
-        return GetColumn<T>(static_cast<std::size_t>(columnIdx));
+        return GetColumn<T>(columnIndex);
     }
 
     template<typename T>
-    void SetColumn(const size_t pColumnIdx, const std::vector<T> &pColumn) {
-        const size_t columnIdx = pColumnIdx + (mProperties.mRowNameIdx + 1);
+    void SetColumn(const size_t columnIndex, const std::vector<T> &pColumn) {
+        const size_t columnIdx = columnIndex + (mProperties.mRowNameIdx + 1);
 
         while (pColumn.size() + (mProperties.mColumnNameIdx + 1) > GetDataRowCount()) {
             std::vector<std::string> row;
@@ -264,28 +333,31 @@ public:
     }
 
     template<typename T>
-    void SetColumn(const std::string &pColumnName, const std::vector<T> &pColumn) {
-        const int columnIdx = GetColumnIdx(pColumnName);
-        if (columnIdx < 0) {
-            throw std::out_of_range("column not found: " + pColumnName);
+    void SetColumn(const std::string &columnName, const std::vector<T> &column) {
+        std::size_t columnIndex;
+        bool found = false;
+        std::tie(found, columnIndex) = GetColumnIdx(columnName);
+        if (!found) {
+            throw std::out_of_range("column not found: " + columnName);
         }
-        SetColumn<T>(static_cast<std::size_t>(columnIdx), pColumn);
+        SetColumn<T>(columnIndex, column);
     }
 
-    void RemoveColumn(const size_t pColumnIdx) {
-        const std::size_t columnIdx = pColumnIdx + (mProperties.mRowNameIdx + 1);
+    void RemoveColumn(const size_t columnIndex) {
+        const std::size_t columnIdx = columnIndex + (mProperties.mRowNameIdx + 1);
         for (auto itRow = mData.begin(); itRow != mData.end(); ++itRow) {
             itRow->erase(itRow->begin() + columnIdx);
         }
     }
 
-    void RemoveColumn(const std::string &pColumnName) {
-        int columnIdx = GetColumnIdx(pColumnName);
-        if (columnIdx < 0) {
-            throw std::out_of_range("column not found: " + pColumnName);
+    void RemoveColumn(const std::string &columnName) {
+        std::size_t columnIndex;
+        bool found = false;
+        std::tie(found, columnIndex) = GetColumnIdx(columnName);
+        if (!found) {
+            throw std::out_of_range("column not found: " + columnName);
         }
-
-        RemoveColumn(static_cast<std::size_t>(columnIdx));
+        RemoveColumn(columnIndex);
     }
 
     size_t GetColumnCount() const {
@@ -294,8 +366,8 @@ public:
 
     // Row Methods --------------------------------------------------------
     template<typename T>
-    std::vector<T> GetRow(const size_t pRowIdx) const {
-        const std::size_t rowIdx = pRowIdx + (mProperties.mColumnNameIdx + 1);
+    std::vector<T> GetRow(const size_t rowIndex) const {
+        const std::size_t rowIdx = rowIndex + (mProperties.mColumnNameIdx + 1);
         std::vector<T> row;
         for (auto itCol = mData.at(rowIdx).begin(); itCol != mData.at(rowIdx).end(); ++itCol) {
             if (std::distance(mData.at(rowIdx).begin(), itCol) > mProperties.mRowNameIdx) {
@@ -307,17 +379,19 @@ public:
     }
 
     template<typename T>
-    std::vector<T> GetRow(const std::string &pRowName) const {
-        int rowIdx = GetRowIdx(pRowName);
-        if (rowIdx < 0) {
-            throw std::out_of_range("row not found: " + pRowName);
+    std::vector<T> GetRow(const std::string &rowName) const {
+        bool found = false;
+        std::size_t rowIndex;
+        std::tie(found, rowIndex) = GetRowIdx(rowName);
+        if (!found) {
+            throw std::out_of_range("row not found: " + rowName);
         }
-        return GetRow<T>(static_cast<std::size_t>(rowIdx));
+        return GetRow<T>(rowIndex);
     }
 
     template<typename T>
-    void SetRow(const size_t pRowIdx, const std::vector<T> &pRow) {
-        const size_t rowIdx = pRowIdx + (mProperties.mColumnNameIdx + 1);
+    void SetRow(const size_t rowIndex, const std::vector<T> &pRow) {
+        const size_t rowIdx = rowIndex + (mProperties.mColumnNameIdx + 1);
 
         while ((rowIdx + 1) > GetDataRowCount()) {
             std::vector<std::string> row;
@@ -338,26 +412,30 @@ public:
     }
 
     template<typename T>
-    void SetRow(const std::string &pRowName, const std::vector<T> &pRow) {
-        int rowIdx = GetRowIdx(pRowName);
-        if (rowIdx < 0) {
-            throw std::out_of_range("row not found: " + pRowName);
+    void SetRow(const std::string &rowName, const std::vector<T> &pRow) {
+        bool found = false;
+        std::size_t rowIndex;
+        std::tie(found, rowIndex) = GetRowIdx(rowName);
+        if (!found) {
+            throw std::out_of_range("row not found: " + rowName);
         }
-        return SetRow<T>(static_cast<std::size_t>(rowIdx), pRow);
+        return SetRow<T>(rowIndex, pRow);
     }
 
-    void RemoveRow(const size_t pRowIdx) {
-        const std::size_t rowIdx = pRowIdx + (mProperties.mColumnNameIdx + 1);
+    void RemoveRow(const size_t rowIndex) {
+        const std::size_t rowIdx = rowIndex + (mProperties.mColumnNameIdx + 1);
         mData.erase(mData.begin() + rowIdx);
     }
 
-    void RemoveRow(const std::string &pRowName) {
-        int rowIdx = GetRowIdx(pRowName);
-        if (rowIdx < 0) {
-            throw std::out_of_range("row not found: " + pRowName);
+    void RemoveRow(const std::string &rowName) {
+        bool found = false;
+        std::size_t rowIndex;
+        std::tie(found, rowIndex) = GetRowIdx(rowName);
+        if (!found) {
+            throw std::out_of_range("row not found: " + rowName);
         }
 
-        RemoveRow(static_cast<std::size_t>(rowIdx));
+        RemoveRow(rowIndex);
     }
 
     size_t GetRowCount() const {
@@ -366,33 +444,36 @@ public:
 
     // Cell Methods -------------------------------------------------------
     template<typename T>
-    T GetCell(const size_t pColumnIdx, const size_t pRowIdx) const {
-        const std::size_t columnIdx = pColumnIdx + (mProperties.mRowNameIdx + 1);
-        const std::size_t rowIdx = pRowIdx + (mProperties.mColumnNameIdx + 1);
+    T GetCell(const size_t columnIndex, const size_t rowIndex) const {
+        const std::size_t columnIdx = columnIndex + (mProperties.mRowNameIdx + 1);
+        const std::size_t rowIdx = rowIndex + (mProperties.mColumnNameIdx + 1);
 
         T val = convert::convert_to_val<T>(mData.at(rowIdx).at(columnIdx));
         return val;
     }
 
     template<typename T>
-    T GetCell(const std::string &pColumnName, const std::string &pRowName) const {
-        const int columnIdx = GetColumnIdx(pColumnName);
-        if (columnIdx < 0) {
-            throw std::out_of_range("column not found: " + pColumnName);
+    T GetCell(const std::string &columnName, const std::string &rowName) const {
+        std::size_t columnIndex;
+        bool found = false;
+        std::tie(found, columnIndex) = GetColumnIdx(columnName);
+        if (!found) {
+            throw std::out_of_range("column not found: " + columnName);
         }
 
-        const int rowIdx = GetRowIdx(pRowName);
-        if (rowIdx < 0) {
-            throw std::out_of_range("row not found: " + pRowName);
+        std::size_t rowIndex;
+        std::tie(found, rowIndex) = GetRowIdx(columnName);
+        if (!found) {
+            throw std::out_of_range("row not found: " + rowName);
         }
 
-        return GetCell<T>(static_cast<std::size_t>(columnIdx), static_cast<std::size_t>(rowIdx));
+        return GetCell<T>(columnIndex, rowIndex);
     }
 
     template<typename T>
-    void SetCell(const size_t pColumnIdx, const size_t pRowIdx, const T &pCell) {
-        const size_t columnIdx = pColumnIdx + (mProperties.mRowNameIdx + 1);
-        const size_t rowIdx = pRowIdx + (mProperties.mColumnNameIdx + 1);
+    void SetCell(const size_t columnIndex, const size_t rowIndex, const T &pCell) {
+        const size_t columnIdx = columnIndex + (mProperties.mRowNameIdx + 1);
+        const size_t rowIdx = rowIndex + (mProperties.mColumnNameIdx + 1);
 
         while ((rowIdx + 1) > GetDataRowCount()) {
             std::vector<std::string> row;
@@ -411,120 +492,126 @@ public:
     }
 
     template<typename T>
-    void SetCell(const std::string &pColumnName, const std::string &pRowName, const T &pCell) {
-        const int columnIdx = GetColumnIdx(pColumnName);
-        if (columnIdx < 0) {
-            throw std::out_of_range("column not found: " + pColumnName);
+    void SetCell(const std::string &columnName, const std::string &rowName, const T &pCell) {
+        std::size_t columnIndex;
+        bool found = false;
+        std::tie(found, columnIndex) = GetColumnIdx(columnName);
+        if (!found) {
+            throw std::out_of_range("column not found: " + columnName);
         }
 
-        const int rowIdx = GetRowIdx(pRowName);
-        if (rowIdx < 0) {
-            throw std::out_of_range("row not found: " + pRowName);
+        std::size_t rowIndex;
+        std::tie(found, rowIndex) = GetRowIdx(rowName);
+        if (!found) {
+            throw std::out_of_range("row not found: " + rowName);
         }
 
-        SetCell<T>(static_cast<std::size_t>(columnIdx), static_cast<std::size_t>(rowIdx), pCell);
+        SetCell<T>(columnIndex, rowIndex, pCell);
     }
 
     // Label Methods ------------------------------------------------------
-    void SetColumnLabel(size_t pColumnIdx, const std::string &pColumnName) {
-        const std::size_t columnIdx = pColumnIdx + (mProperties.mRowNameIdx + 1);
-        mColumnNames[pColumnName] = columnIdx;
+    void SetColumnLabel(size_t columnIndex, const std::string &columnLabel) {
+        const std::size_t columnIdx = columnIndex + (mProperties.mRowNameIdx + 1);
+        mColumnNames[columnLabel] = columnIdx;
         if (mProperties.mColumnNameIdx >= 0) {
-            mData.at(mProperties.mColumnNameIdx).at(columnIdx) = pColumnName;
+            mData.at(mProperties.mColumnNameIdx).at(columnIdx) = columnLabel;
         }
     }
 
-    void SetRowLabel(size_t pRowIdx, const std::string &pRowName) {
-        const std::size_t rowIdx = pRowIdx + (mProperties.mColumnNameIdx + 1);
-        mRowNames[pRowName] = rowIdx;
+    void SetRowLabel(size_t rowIndex, const std::string &rowLabel) {
+        bool found;
+        std::tie(found, std::ignore) = GetRow(rowIndex)
+        if (mProperties.hasRowLabel()) {
+
+        }
+        const std::size_t rowIdx = rowIndex + (mProperties.mColumnNameIdx + 1);
+        mRowNames[rowLabel] = rowIdx;
         if (mProperties.mRowNameIdx >= 0) {
-            mData.at(rowIdx).at(static_cast<std::size_t>(mProperties.mRowNameIdx)) = pRowName;
+            mData.at(rowIdx).at(static_cast<std::size_t>(mProperties.mRowNameIdx)) = rowLabel;
         }
     }
 
 private:
 
-    void ReadCsv(const std::string &path) {
+    void read_csv(const std::string &path) {
         std::ifstream file(path, std::ios::in | std::ios::binary);
 
         auto reader = rowReader(std::istreambuf_iterator<char>{file},
-                                  std::istreambuf_iterator<char>{});
+                                std::istreambuf_iterator<char>{});
 
-        std::copy(std::begin(reader), std::end(reader), std::back_inserter(mData));
-
-        // Assume CR/LF if at least half the linebreaks have CR
-//            mProperties.mHasCR = (cr > (lf / 2));
+        for (auto& row : reader) {
+            this->rowCount++;
+            this->columnCount = std::max(this->columnCount, row.size());
+            this->mData.push_back(row);
+        }
 
         // Set up column labels
-        if (mProperties.mColumnNameIdx >= 0 && mData.size() > 0) {
+        if (mProperties.hasColLabel()) {
+            if (this->rowCount > 0) {
+                --this->rowCount;
+            }
             std::size_t i = 0;
-            for (auto &columnName : mData[mProperties.mColumnNameIdx]) {
+            for (auto &columnName : mData[0]) {
                 mColumnNames[columnName] = i++;
             }
         }
 
         // Set up row labels
-        if (mProperties.mRowNameIdx >= 0 && mData.size() > mProperties.mColumnNameIdx + 1) {
+        if (mProperties.hasRowLabel()) {
+            if (this->columnCount > 0) {
+                --this->columnCount;
+            }
             std::size_t i = 0;
             for (auto &dataRow : mData) {
-                mRowNames[dataRow[mProperties.mRowNameIdx]] = i++;
+                mRowNames[dataRow[0]] = i++;
             }
         }
     }
 
-    std::string read_csv(const std::string& path) {
-        std::ifstream file(path, std::ios::binary | std::ios::in | std::ios::ate);
+    void write_csv(const std::string& path) const {
+        std::ofstream file(path, std::ios::out | std::ios::binary);
 
-        std::streampos length = file.tellg();
-        file.seekg(0, std::ios::beg);
-
-        std::string buffer(length, '\0');
-        file.read(&buffer[0], length);
-
-        return buffer;
+        std::transform(std::begin(mData), std::end(mData),
+                       std::ostream_iterator<std::string>(file, mProperties.rowSep().data()),
+                       std::bind(&Document::to_csv_row, this));
     }
 
-    static std::string to_csv_row(const std::vector<std::string>& row) {
+    std::string to_csv_row(const std::vector<std::string>& row) {
         if (!row.empty()) {
             std::ostringstream oss;
-            std::copy(std::begin(row), std::end(row), std::ostream_iterator<std::string>(oss, ","));
+            std::copy(std::begin(row), std::end(row), std::ostream_iterator<std::string>(
+                    oss, std::string(1, mProperties.fieldSep()).c_str()));
             std::string joined = oss.str();
-            return joined.erase(joined.rfind(','));
+            return joined.erase(joined.rfind(mProperties.fieldSep()));
         }
         return {};
     }
 
-    void write_csv() const {
-        std::ofstream file(mProperties.mPath, std::ios::out | std::ios::binary);
-
-        std::transform(std::begin(mData), std::end(mData),
-                       std::ostream_iterator<std::string>(file, mProperties.mHasCR ? "\r\n" : "\n"),
-                       Document::to_csv_row);
-    }
-
-    int GetColumnIdx(const std::string &pColumnName) const {
-        if (mProperties.mColumnNameIdx >= 0) {
-            if (mColumnNames.find(pColumnName) != mColumnNames.end()) {
-                return mColumnNames.at(pColumnName) - (mProperties.mRowNameIdx + 1);
+    std::tuple<bool, std::size_t> GetColumnIdx(const std::string &columnName) const {
+        if (mProperties.hasColLabel()) {
+            auto columnIter = mColumnNames.find(columnName);
+            if (columnIter != mColumnNames.end()) {
+                return std::make_tuple(true, columnIter->second - (mProperties.hasRowLabel() ? 1 : 0));
             }
         }
-        return -1;
+        return std::make_tuple(false, -1);
     }
 
-    int GetRowIdx(const std::string &pRowName) const {
+    std::tuple<bool, std::size_t> GetRowIdx(const std::string &rowName) const {
         if (mProperties.mRowNameIdx >= 0) {
-            if (mRowNames.find(pRowName) != mRowNames.end()) {
-                return mRowNames.at(pRowName) - (mProperties.mColumnNameIdx + 1);
+            auto rowIter = mRowNames.find(rowName);
+            if (rowIter != mRowNames.end()) {
+                return std::make_tuple(true, rowIter->second - (mProperties.mColumnNameIdx + 1));
             }
         }
-        return -1;
+        return std::make_tuple(false, -1);
     }
 
     std::size_t GetDataRowCount() const {
-        return mData.size();
+        return this->rowCount;
     }
 
     std::size_t GetDataColumnCount() const {
-        return (mData.size() > 0) ? mData.at(0).size() : 0;
+        return this->columnCount;
     }
 };

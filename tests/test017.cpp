@@ -20,7 +20,7 @@ int main() {
     unittest::WriteFile(path, csv);
 
     try {
-        rapidcsv::Document doc(rapidcsv::Properties(path, 0, -1));
+        rapidcsv::Document doc(rapidcsv::PropertiesBuilder().filePath(path).hasColLabel());
 
         doc.SetRow<int>(0, std::vector<int>({3, 9, 81}));
         doc.SetRow<std::string>(1, std::vector<std::string>({"4", "16", "256"}));

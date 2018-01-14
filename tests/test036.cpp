@@ -21,7 +21,7 @@ int main() {
     unittest::WriteFile(path, csv);
 
     try {
-        rapidcsv::Document doc(rapidcsv::Properties(path, -1, -1));
+        rapidcsv::Document doc(rapidcsv::PropertiesBuilder().filePath(path));
 
         unittest::ExpectEqual(int, doc.GetCell<int>(1, 0), 32767);
         unittest::ExpectEqual(long, doc.GetCell<long>(1, 1), 2147483647);

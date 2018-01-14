@@ -43,8 +43,11 @@ createMyTest(test036)
 createMyTest(test037)
 createMyTest(test038)
 createMyTest(test039)
-createMyTest(test040)
-createMyTest(test040b)
+
+add_executable(test040 test040.cpp test040b.cpp)
+target_link_libraries(test040 ${PROJECT_NAME})
+add_test(NAME test040 COMMAND test040)
+
 createMyTest(test041)
 createMyTest(test042)
 createMyTest(test043)

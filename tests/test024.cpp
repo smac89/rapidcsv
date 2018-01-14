@@ -18,7 +18,7 @@ int main() {
     unittest::WriteFile(path, csv);
 
     try {
-        rapidcsv::Document doc(rapidcsv::Properties(path, -1, -1));
+        rapidcsv::Document doc(rapidcsv::PropertiesBuilder().filePath(path));
 
         doc.SetCell<int>(0, 0, 3);
         doc.SetCell<int>(1, 0, 9);
