@@ -16,7 +16,7 @@ int main() {
     std::string path = unittest::TempPath();
 
     try {
-        rapidcsv::Document doc(rapidcsv::PropertiesBuilder().hasColLabel().hasRowLabel());
+        rapidcsv::Document doc(rapidcsv::PropertiesBuilder().hasHeader().hasRowLabel());
 
         doc.SetColumn<int>(0, {2, 3});
         doc.SetColumn<int>(1, {4, 9, 16, 25});

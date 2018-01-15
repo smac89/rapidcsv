@@ -20,7 +20,7 @@ int main() {
     unittest::WriteFile(path, csv);
 
     try {
-        rapidcsv::Document doc(rapidcsv::PropertiesBuilder().filePath(path).hasColLabel());
+        rapidcsv::Document doc(rapidcsv::PropertiesBuilder().filePath(path).hasHeader());
 
         doc.SetCell<int>(0, 0, 3);
         doc.SetCell<int>(1, 0, 9);

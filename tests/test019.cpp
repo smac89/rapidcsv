@@ -22,7 +22,7 @@ int main() {
     unittest::WriteFile(path, csv);
 
     try {
-        rapidcsv::Document doc(rapidcsv::PropertiesBuilder().filePath(path).hasColLabel());
+        rapidcsv::Document doc(rapidcsv::PropertiesBuilder().filePath(path).hasHeader());
 
         doc.RemoveRow(3);
         doc.RemoveRow(0);

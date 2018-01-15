@@ -24,7 +24,7 @@ namespace rapidcsv {
     }
 
     template <typename _StreamT>
-    std::shared_ptr<read::Reader<std::vector<std::string>>> rowReader(_StreamT begin, _StreamT end) {
+    std::shared_ptr<read::Reader<std::vector<std::string>>> row_reader(_StreamT begin, _StreamT end) {
         return std::make_shared<read::CSVRowReader<_StreamT>>(std::move(begin), std::move(end));
     }
 }

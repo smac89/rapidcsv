@@ -16,7 +16,7 @@ int main() {
 
     try {
         rapidcsv::Document doc(rapidcsv::PropertiesBuilder()
-                                       .hasColLabel()
+                                       .hasHeader()
                                        .hasRowLabel()
                                        .rowSep("\r\n"));
 
