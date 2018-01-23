@@ -40,6 +40,8 @@
 
 namespace rapidcsv {
 
+    class Document;
+
     namespace convert {
         template<typename T>
         std::string convert_to_string(const T &pVal) {
@@ -85,6 +87,10 @@ namespace rapidcsv {
 
     struct CSVQuote: public CSVProperty<char> {
         using CSVProperty::CSVProperty;
+    };
+
+    struct CSVQuoteEscape: public CSVQuote {
+        using CSVQuote::CSVQuote;
     };
 
     class Properties {
@@ -206,8 +212,6 @@ namespace rapidcsv {
         std::string path;
     };
 
-    class Document;
-
     namespace convert {
         template <>
         inline std::string convert_to_string(const std::string& pVal) {
@@ -222,26 +226,27 @@ namespace rapidcsv {
 }
 
 class rapidcsv::Document {
-    using RowType = std::vector<std::pair<std::size_t, std::string>>;
+    template <typename T>
+    using Cell = std::pair<std::size_t, T>;
+    template <typename T>
+    using CellRange = std::vector<std::pair<std::size_t, T>>;
+    using CellRangeRaw = CellRange<std::string>;
 private:
     Properties mProperties;
-    std::vector<RowType> mData;
+    std::vector<CellRangeRaw> mData;
     std::map<std::string, std::size_t> mColumnNames;
     std::map<std::string, std::size_t> mRowNames;
     std::size_t rowCount = 0;
     std::size_t columnCount = 0;
+    std::vector<std::vector<bool>> heatMap;
 
 public:
     // Contructors --------------------------------------------------------
-    explicit Document(const std::string& pPath): Document(PropertiesBuilder().filePath(pPath)) { }
+    explicit Document(const std::string& pPath):
+            Document(std::forward<Properties>(PropertiesBuilder().filePath(pPath))) { }
 
-    explicit Document(const Properties &pProperties): mProperties(pProperties) {
-        if (!mProperties.mPath.empty()) {
-            readCsv(mProperties.mPath);
-        }
-    }
-
-    explicit Document(Properties &&pProperties): mProperties(std::move(pProperties)) {
+    explicit Document(Properties &&pProperties):
+            mProperties(std::move(pProperties)), heatMap(32, std::vector<bool>(64, false)) {
         if (!mProperties.mPath.empty()) {
             readCsv(mProperties.mPath);
         }
@@ -272,15 +277,27 @@ public:
     // Column Methods -----------------------------------------------------
 
     template<typename T>
-    std::unordered_map<std::size_t, T> GetColumn(const size_t columnIndex) const {
+    CellRange<T> GetColumn(const size_t columnIndex) const {
         checkColumn(columnIndex);
         return _GetColumn(columnIndex);
     }
 
     template<typename T>
-    std::unordered_map<std::size_t, T> GetColumn(const std::string &columnName) const {
+    CellRange<T> GetColumn(const std::string &columnName) const {
         std::size_t columnIndex = checkColumn(columnName);
         return _GetColumn(columnIndex);
+    }
+
+    template<typename T>
+    std::vector<T> GetColumn(const size_t columnIndex, const T& fillValue) const {
+        checkColumn(columnIndex);
+        return _GetColumn(columnIndex, fillValue);
+    }
+
+    template<typename T>
+    std::vector<T> GetColumn(const std::string &columnName, const T& fillValue) const {
+        std::size_t columnIndex = checkColumn(columnName);
+        return _GetColumn(columnIndex, fillValue);
     }
 
     template<typename T>
@@ -578,23 +595,43 @@ private:
     }
 
     template<typename T>
-    std::unordered_map<std::size_t, T> _GetColumn(const size_t columnIndex) const {
+    CellRange<T> _GetColumn(const size_t columnIndex) const {
         const std::size_t normalizedIndex = columnIndex + (mProperties.hasRowLabel() ? 1 : 0);
-        std::unordered_map<std::size_t, T> column;
+        CellRange<T> column;
         std::size_t rowIndex = 0;
 
         std::for_each((mProperties.hasHeader() ? std::next(std::begin(mData)) : std::begin(mData)),
-                std::end(mData), [&column, &normalizedIndex, &rowIndex](const RowType & row) {
+                std::end(mData), [&column, &normalizedIndex, &rowIndex](const CellRangeRaw &row) {
                     auto lb = std::lower_bound(
                             std::begin(row), std::end(row), normalizedIndex,
                             [](const std::pair<std::size_t, std::string>& element, const std::size_t& value) {
                                 return element.first < value;
                             });
                     if (lb != std::end(row) && lb->first == normalizedIndex) {
-                        column.emplace(rowIndex, convert::convert_to_val<T>(lb->second));
+                        column.emplace_back(rowIndex, convert::convert_to_val<T>(lb->second));
                     }
                     rowIndex++;
         });
+        return column;
+    }
+
+    template<typename T>
+    std::vector<T> _GetColumn(const size_t columnIndex, const T& fillValue) const {
+        const std::size_t normalizedIndex = columnIndex + (mProperties.hasRowLabel() ? 1 : 0);
+        std::vector<T> column;
+
+        std::transform((mProperties.hasHeader() ? std::next(std::begin(mData)) : std::begin(mData)),
+                       std::end(mData), std::back_inserter(column), [&normalizedIndex](const CellRangeRaw &row) {
+                    auto lb = std::lower_bound(
+                            std::begin(row), std::end(row), normalizedIndex,
+                            [](const std::pair<std::size_t, std::string>& element, const std::size_t& value) {
+                                return element.first < value;
+                            });
+                    if (lb != std::end(row) && lb->first == normalizedIndex) {
+                        return convert::convert_to_val<T>(lb->second);
+                    }
+                    return fillValue;
+                });
         return column;
     }
 

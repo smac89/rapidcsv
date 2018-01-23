@@ -3,7 +3,7 @@
 
 #include <string>
 #include <utility>
-#include "reader.hpp"
+#include "simple_reader.hpp"
 #include "iterator/field_iterator.hpp"
 #include "csv_except.hpp"
 #include "csv_constants.hpp"
@@ -15,22 +15,20 @@ namespace rapidcsv {
         using except::csv_quote_inside_non_quote_field_exception;
         using except::csv_unterminated_quote_exception;
         using iterator::CSVFieldIterator;
-        using iterator::CSVIterator;
+        using iterator::Iterator;
 
         template <typename _StreamT>
-        class CSVFieldReader: public Reader<std::string> {
+        class CSVFieldReader: public SimpleReader<std::string, _StreamT> {
         protected:
             std::string current;
-            _StreamT _begin, _end;
 
         private:
             bool _start_quoted_field, _end_quoted_field,
                     _is_quoted_field, _is_return, _is_next_line, _is_comma;
 
         public:
-            explicit CSVFieldReader(_StreamT &&begin, _StreamT &&end):
-                    Reader(CSVFieldIterator(this), CSVIterator<std::string>::end_iterator()),
-                    _begin(std::move(begin)), _end(std::move(end)) {
+            explicit CSVFieldReader(_StreamT &&begin, _StreamT &&end) :
+                    SimpleReader(std::forward(begin), std::forward(end)) {
                 reset();
             }
 
@@ -66,7 +64,7 @@ namespace rapidcsv {
 
         private:
             bool stream_empty() const {
-                return _begin == _end;
+                return !SimpleReader::has_next();
             }
 
             void parseNext() {

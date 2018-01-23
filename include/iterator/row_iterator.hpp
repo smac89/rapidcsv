@@ -6,12 +6,10 @@
 #include "iterator.hpp"
 
 namespace rapidcsv {
-    namespace read {
-        namespace iterator {
-            class CSVRowIterator: public CSVIterator<std::vector<std::string>> {
-                using CSVIterator::CSVIterator;
-            };
-        }
+    namespace iterator {
+        class CSVRowIterator: public Iterator<std::vector<std::string>> {
+            using Iterator::Iterator;
+        };
     }
 }
 

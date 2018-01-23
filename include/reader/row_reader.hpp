@@ -3,7 +3,7 @@
 
 #include <string>
 #include <utility>
-#include "reader.hpp"
+#include "reader_base.hpp"
 #include "field_reader.hpp"
 #include "iterator/row_iterator.hpp"
 #include "csv_constants.hpp"
@@ -11,19 +11,18 @@
 namespace rapidcsv {
     namespace read {
 
-        using iterator::CSVIterator;
+        using iterator::Iterator;
         using iterator::CSVRowIterator;
 
         using VS = std::vector<std::string>;
 
         template <class _StreamT>
-        class CSVRowReader: public Reader<VS> {
+        class CSVRowReader: public ReaderBase<VS> {
             CSVFieldReader<_StreamT> fieldReader;
 
         public:
 
             explicit CSVRowReader(_StreamT &&begin, _StreamT &&end):
-                    Reader(CSVRowIterator(this), CSVIterator<VS>::end_iterator()),
                     fieldReader(std::forward<_StreamT>(begin), std::forward<_StreamT>(end)) {
             }
 
@@ -35,7 +34,7 @@ namespace rapidcsv {
                 std::string rowSep(1, LF);
                 VS row;
                 for (std::string field; fieldReader.has_next(); row.emplace_back(field)) {
-                    field = fieldReader.next();
+                    field = std::move(fieldReader.next());
                     if (field == rowSep) {
                         break;
                     }

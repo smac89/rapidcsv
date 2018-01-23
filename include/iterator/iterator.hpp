@@ -1,63 +1,59 @@
 #ifndef RAPIDCSV_ITERATOR_HPP
 #define RAPIDCSV_ITERATOR_HPP
 
-#include <string>
-#include <iterator>
-#include "reader/reader.hpp"
+#include "iterator/iterator_base.hpp"
+#include "reader/reader_base.hpp"
 #include "csv_except.hpp"
 
 namespace rapidcsv {
-    namespace read {
-        namespace iterator {
-            template <typename T>
-            class CSVIterator: public std::iterator<std::forward_iterator_tag, T> {
-                explicit CSVIterator(): _reader(nullptr) {}
-            protected:
-                Reader<T>* _reader;
-                T value;
-            public:
-                explicit CSVIterator(Reader<T>* reader): _reader(reader) { }
+    namespace iterator {
+        template <typename T>
+        class Iterator: public IteratorBase<T> {
+            using rapidcsv::read::ReaderBase;
 
-                virtual const T operator *() {
-                    if (nullptr == _reader) {
-                        throw empty_iterator_exception();
-                    } else if (!has_init) {
-                        this->operator++();
-                        has_init = true;
-                    }
-                    return value;
+            explicit Iterator(): _reader(nullptr) {}
+        protected:
+            ReaderBase<T>* _reader;
+            T value;
+        public:
+            explicit Iterator(ReaderBase<T>* reader): _reader(reader) { }
+
+            virtual const T operator *() {
+                if (nullptr == _reader) {
+                    throw empty_iterator_exception();
+                } else if (!has_init) {
+                    std::advance(*this, 1);
+                    has_init = true;
                 }
+                return value;
+            }
 
-                virtual CSVIterator<T>& operator++ () {
-                    if (nullptr == _reader) {
-                        throw past_the_end_iterator_exception();
-                    }
-                    if (_reader->has_next()) {
-                        value = std::move(_reader->next());
-                    } else {
-                        _reader = nullptr;
-                    }
-                    return *this;
+            virtual Iterator<T>& operator++ () {
+                if (nullptr == _reader) {
+                    throw past_the_end_iterator_exception();
                 }
-
-                virtual bool operator != (CSVIterator<T>& other) {
-                    return _reader != other._reader;
+                if (_reader->has_next()) {
+                    value = std::move(_reader->next());
+                } else {
+                    _reader = nullptr;
                 }
+                return *this;
+            }
 
-                static CSVIterator<T> end_iterator() {
-                    return iterator_empty;
-                }
+            bool operator != (Iterator<T>& other) {
+                return _reader != other._reader;
+            }
 
-                virtual ~CSVIterator() {}
+            static Iterator<T> &end_iterator() {
+                return iterator_empty;
+            }
 
-            private:
-                bool has_init = false;
-                static CSVIterator<T> iterator_empty;
-            };
+        private:
+            bool has_init = false;
+            static Iterator<T> iterator_empty;
+        };
 
-            template <typename T>
-            CSVIterator<T> CSVIterator<T>::iterator_empty;
-        }
+        template <typename T> Iterator<T> Iterator<T>::iterator_empty;
     }
 }
 

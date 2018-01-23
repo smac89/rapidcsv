@@ -24,24 +24,24 @@ namespace rapidcsv {
         };
     }
 
+    namespace iterator {
+        struct past_the_end_iterator_exception: public std::runtime_error {
+            past_the_end_iterator_exception():
+                    std::runtime_error("Iterator has gone past the end") { }
+        };
+
+        struct empty_iterator_exception: public std::runtime_error {
+            empty_iterator_exception():
+                    std::runtime_error("Iterator is empty") { }
+        };
+    }
+
     namespace read {
         struct csv_nothing_to_read_exception: public std::exception {
             virtual const char* what() const noexcept {
                 return "The reader has run out of bytes!";
             }
         };
-
-        namespace iterator {
-            struct past_the_end_iterator_exception: public std::runtime_error {
-                past_the_end_iterator_exception():
-                        std::runtime_error("Iterator has gone past the end") { }
-            };
-
-            struct empty_iterator_exception: public std::runtime_error {
-                empty_iterator_exception():
-                        std::runtime_error("Iterator is empty") { }
-            };
-        }
     }
 }
 
