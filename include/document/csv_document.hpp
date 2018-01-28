@@ -4,22 +4,27 @@
 #include <string>
 #include <vector>
 #include <unordered_map>
+#include <tuple>
+#include <utility>
 #include <fstream>
 #include <iterator>
 #include <sstream>
 #include <algorithm>
+#include <numeric>
 
-#include "util/fp.hpp"
+#include "reader/simple_reader.hpp"
 #include "document/properties.hpp"
 #include "document/document.hpp"
 #include "csv_reader.hpp"
+#include "util/fp.hpp"
 
 namespace rapidcsv {
-    template <typename T> using ColumnVector = std::vector<T>;
     class CSVDocument : public Document {
         using Document::Document;
     public:
-        using MeshRow = std::vector<std::pair<std::size_t, std::string>>;
+        using Elem = std::pair<std::size_t, std::string>;
+        using MeshRow = std::vector<Elem>;
+
         std::size_t rowCount() const {
             return this->_rowCount;
         }
@@ -46,35 +51,31 @@ namespace rapidcsv {
         template<typename T>
         std::vector<T> _GetColumn(const size_t columnIndex) const {
             using rapidcsv::read::Reader;
-            using rapidcsv::iterator::ChainedIterator;
+            using rapidcsv::read::SimpleReader;
+            using Interim = std::pair<bool, std::string>;
+            using TransFormType = Reader<Interim>;
 
             std::vector<T> column;
             auto begin = (documentProperties.hasHeader() ? std::next(std::begin(documentMesh))
                                                          : std::begin(documentMesh));
-            Reader<T> reader = std::move(transform_if(
-                    begin, std::end(documentMesh),[&columnIndex](const MeshRow &row) {
-                        auto lb = std::lower_bound(
-                                std::begin(row), std::end(row), columnIndex,
-                                [](const std::pair<std::size_t, std::string>& element, const std::size_t& value) {
-                                    return element.first < value;
-                                });
-                        return lb != std::end(row) && lb->first == columnIndex;
-            })) >> [](std::pair<std::size_t, std::string>& element) {
-                return
-            };
+            auto end = std::end(documentMesh);
 
-            std::transform((documentProperties.hasHeader() ? std::next(std::begin(documentMesh)) : std::begin(documentMesh)),
-                           std::end(documentMesh), std::back_inserter(column), [&columnIndex](const MeshRow &row) {
-                        auto lb = std::lower_bound(
-                                std::begin(row), std::end(row), columnIndex,
-                                [](const std::pair<std::size_t, std::string>& element, const std::size_t& value) {
-                                    return element.first < value;
-                                });
-                        if (lb != std::end(row) && lb->first == columnIndex) {
-                            return convert::convert_to_val<T>(lb->second);
-                        }
-                        return fillValue;
-                    });
+            auto reader = std::move(r_copy_if(r_transform(
+                    SimpleReader(begin, end), [&columnIndex](const MeshRow &row) {
+                        auto lb = std::lower_bound(std::begin(row), std::end(row), columnIndex,
+                                                   [](const Elem& element, const std::size_t& value) {
+                                                       return element.first < value;
+                                                   });
+                        return (lb != std::end(row) && lb->first == columnIndex) ? std::make_pair(true, lb->second)
+                                                                                 : std::make_pair(false, "");
+                    }), [](const Interim& content) { return std::get<0>(content); }));
+
+            std::transform(std::begin(reader),
+                           std::end(reader),
+                           std::back_inserter(column), [](Interim&& data) {
+                return std::move(convert::convert_to_val<T>(std::get<1>(data)));
+            });
+
             return column;
         }
 
@@ -95,7 +96,7 @@ namespace rapidcsv {
         }
 
     private:
-        std::vector<std::vector<std::pair<std::size_t, std::string>>> documentMesh;
+        std::vector<MeshRow> documentMesh;
         std::unordered_map<std::string, std::size_t> columnNames;
         std::unordered_map<std::string, std::size_t> rowNames;
         std::size_t _rowCount = 0;
@@ -106,9 +107,13 @@ namespace rapidcsv {
 void rapidcsv::CSVDocument::load(const std::string& path) {
     std::ifstream file(path, std::ios::in | std::ios::binary);
 
-    auto reader = row_reader(std::istreambuf_iterator<char>{file},
-                             std::istreambuf_iterator<char>{});
-
+    auto reader =  r_transform(row_reader(std::istreambuf_iterator<char>{file},
+                                          std::istreambuf_iterator<char>{}), [](std::vector<std::string>&& data) {
+        MeshRow transformRow;
+        std::transform(std::make_move_iterator(std::begin(data)),
+                       std::end(data),
+                       std::back_inserter(transformRow), [i = 0](std::string&& field))
+    });
     for (auto&& row : reader) {
         this->_rowCount++;
         this->_columnCount = std::max(this->columnCount, row.size());

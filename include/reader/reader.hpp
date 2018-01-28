@@ -1,5 +1,5 @@
-#ifndef RAPIDCSV_READER_BASE_HPP
-#define RAPIDCSV_READER_BASE_HPP
+#ifndef RAPIDCSV_READER_HPP
+#define RAPIDCSV_READER_HPP
 
 #include "iterator/iterator.hpp"
 
@@ -8,10 +8,11 @@ namespace rapidcsv {
 
         // Reader interface
         template <typename T>
-        class ReaderBase {
+        class Reader {
             using iterator::Iterator;
+            using iterator::IteratorBase;
         protected:
-            explicit ReaderBase(): _end_iterator(Iterator<T>::end_iterator()), _iterator(this) {}
+            explicit Reader(): _end_iterator(Iterator<T>::end_iterator()), _iterator(this) {}
 
         public:
             virtual bool has_next() const {
@@ -20,23 +21,23 @@ namespace rapidcsv {
 
             virtual T next() = 0;
 
-            virtual Iterator<T>& begin() {
+            virtual IteratorBase<T>& begin() {
                 return _iterator;
             }
 
-            virtual const Iterator<T>& begin() const {
+            virtual const IteratorBase<T>& begin() const {
                 return _iterator;
             }
 
-            virtual Iterator<T>& end() {
+            virtual IteratorBase<T>& end() {
                 return _end_iterator;
             }
 
-            virtual const Iterator<T>& end() const {
+            virtual const IteratorBase<T>& end() const {
                 return _end_iterator;
             }
 
-            virtual ~ReaderBase<T>() {}
+            virtual ~Reader<T>() {}
 
         protected:
             virtual const T& peek() const {
@@ -49,4 +50,4 @@ namespace rapidcsv {
     }
 }
 
-#endif //RAPIDCSV_READER_BASE_HPP
+#endif //RAPIDCSV_READER_HPP

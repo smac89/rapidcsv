@@ -1,17 +1,18 @@
 #ifndef RAPIDCSV_SIMPLE_READER_HPP
 #define RAPIDCSV_SIMPLE_READER_HPP
 
-#include "reader_base.hpp"
+#include "reader.hpp"
 
 namespace rapidcsv {
     namespace read {
 
         template <typename T, typename InputIt>
-        class SimpleReader: public ReaderBase<T> {
+        class SimpleReader: public Reader<T> {
         protected:
             InputIt _begin, _end;
         public:
-            explicit SimpleReader(InputIt begin, InputIt end): _begin(begin), _end(end) { }
+            explicit SimpleReader(InputIt begin, InputIt end):
+                    _begin(std::move(begin)), _end(std::move(end)) { }
 
             virtual bool has_next() const {
                 return _begin != _end;

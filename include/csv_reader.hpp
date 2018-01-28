@@ -7,6 +7,7 @@
 #include "reader/reader.hpp"
 #include "reader/field_reader.hpp"
 #include "reader/row_reader.hpp"
+#include "reader/simple_reader.hpp"
 
 #if __cplusplus == 201103L || (defined(_MSC_VER) && _MSC_VER == 1900)
 namespace std {

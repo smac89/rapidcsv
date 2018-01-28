@@ -2,21 +2,25 @@
 #define RAPIDCSV_ITERATOR_HPP
 
 #include "iterator/iterator_base.hpp"
-#include "reader/reader_base.hpp"
+#include "reader/reader.hpp"
 #include "csv_except.hpp"
 
 namespace rapidcsv {
     namespace iterator {
         template <typename T>
         class Iterator: public IteratorBase<T> {
-            using rapidcsv::read::ReaderBase;
+            using rapidcsv::read::Reader;
 
             explicit Iterator(): _reader(nullptr) {}
         protected:
-            ReaderBase<T>* _reader;
+            Reader<T>* _reader;
             T value;
         public:
-            explicit Iterator(ReaderBase<T>* reader): _reader(reader) { }
+            explicit Iterator(Reader<T>* reader): _reader(reader) {
+                if (_reader != nullptr && !_reader->has_next()) {
+                    _reader = nullptr;
+                }
+            }
 
             virtual const T operator *() {
                 if (nullptr == _reader) {
@@ -40,7 +44,7 @@ namespace rapidcsv {
                 return *this;
             }
 
-            bool operator != (Iterator<T>& other) {
+            virtual bool operator != (Iterator<T>& other) noexcept {
                 return _reader != other._reader;
             }
 

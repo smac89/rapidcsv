@@ -3,7 +3,7 @@
 
 #include <string>
 #include <utility>
-#include "reader_base.hpp"
+#include "reader.hpp"
 #include "field_reader.hpp"
 #include "iterator/row_iterator.hpp"
 #include "csv_constants.hpp"
@@ -17,7 +17,7 @@ namespace rapidcsv {
         using VS = std::vector<std::string>;
 
         template <class _StreamT>
-        class CSVRowReader: public ReaderBase<VS> {
+        class CSVRowReader: public Reader<VS> {
             CSVFieldReader<_StreamT> fieldReader;
 
         public:

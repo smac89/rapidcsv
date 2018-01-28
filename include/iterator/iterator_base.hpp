@@ -10,6 +10,7 @@ namespace rapidcsv {
         public:
             virtual const T operator *() = 0;
             virtual IteratorBase<T>& operator++ () = 0;
+            virtual bool operator != (IteratorBase<T>& other) = 0;
             virtual ~IteratorBase() {}
         };
     }
