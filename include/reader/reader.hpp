@@ -9,10 +9,12 @@ namespace rapidcsv {
         // Reader interface
         template <typename T>
         class Reader {
-            using iterator::Iterator;
-            using iterator::IteratorBase;
+            using iterator = iter::Iterator<T>;
+            using iter::IteratorBase;
         protected:
-            explicit Reader(): _end_iterator(Iterator<T>::end_iterator()), _iterator(this) {}
+            Reader(): _end_iterator(iterator::end_iterator()), _iterator(this) {}
+            explicit Reader(Reader<T>&&) = default;
+            explicit Reader<T>& operator =(Reader<T>&&) = default;
 
         public:
             virtual bool has_next() const {
@@ -45,7 +47,7 @@ namespace rapidcsv {
             }
 
         private:
-            Iterator<T> &_end_iterator, _iterator;
+            iterator &_end_iterator, _iterator;
         };
     }
 }

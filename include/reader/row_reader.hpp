@@ -5,14 +5,10 @@
 #include <utility>
 #include "reader.hpp"
 #include "field_reader.hpp"
-#include "iterator/row_iterator.hpp"
 #include "csv_constants.hpp"
 
 namespace rapidcsv {
     namespace read {
-
-        using iterator::Iterator;
-        using iterator::CSVRowIterator;
 
         using VS = std::vector<std::string>;
 

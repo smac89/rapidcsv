@@ -22,6 +22,11 @@ namespace rapidcsv {
                 return *_begin++;
             }
         };
+
+        template <typename T, typename InputIt>
+        auto constexpr simpleReader(InputIt begin, InputIt end) -> SimpleReader<T, InputIt> {
+            return SimpleReader<T, InputIt>(std::forward<InputIt>(begin), std::forward<InputIt>(end));
+        }
     }
 }
 

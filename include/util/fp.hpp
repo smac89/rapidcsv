@@ -2,6 +2,7 @@
 #define RAPIDCSV_FP_HPP
 
 #include <utility>
+#include <limits>
 #include <functional>
 #include "iterator/iterator.hpp"
 #include "reader/simple_reader.hpp"
@@ -96,16 +97,14 @@ namespace rapidcsv {
             }
         };
 
-        template<class T> constexpr typename std::add_rvalue_reference<T>::type val();
-
         template <typename Mapper, typename Arg, typename ...Args>
         struct Map {
             using type = decltype(std::tuple_cat(
-                    std::make_tuple(val<const Mapper&>()(val<const Arg&>())),
-                    val<typename Map<Mapper, Args...>::type>()
+                    std::make_tuple(std::declval<const Mapper&>()(std::declval<const Arg&>())),
+                    std::declval<typename Map<Mapper, Args...>::type>()
             ));
 
-            static constexpr auto map(const Mapper& mapper, const Arg& arg, const Args&...args)
+            auto static constexpr map(const Mapper& mapper, const Arg& arg, const Args&...args)
             -> typename Map<Mapper, Arg, Args...>::type {
                 return std::tuple_cat(std::make_tuple(mapper(arg)),
                                       Map<Mapper, Args...>::map(mapper, args...));
@@ -115,10 +114,10 @@ namespace rapidcsv {
         template <typename Mapper, typename Arg>
         struct Map<Mapper, Arg> {
             using type = decltype(std::make_tuple(
-                    val<const Mapper&>()(val<const Arg&>())
+                    std::declval<const Mapper&>()(std::declval<const Arg&>())
             ));
 
-            static constexpr auto map(const Mapper& mapper, const Arg& arg)
+            auto static constexpr map(const Mapper& mapper, const Arg& arg)
             -> typename Map<Mapper, Arg>::type {
                 return std::make_tuple(mapper(arg));
             }
@@ -193,22 +192,51 @@ namespace rapidcsv {
         };
     }
 
-    template <typename T, typename R, typename Trans>
-    rapidcsv::read::TransformReader<T, R, Trans> r_transform(rapidcsv::read::Reader<T>&& reader, Trans transformer) {
-        return rapidcsv::read::TransformReader<T, R, Trans>(std::move(reader), transformer);
+    namespace read {
+        template <typename T, typename std::enable_if<std::is_arithmetic<T>::value>::type* = nullptr>
+        class NumberSequenceReader: public Reader<T> {
+            T current;
+        public:
+            explicit NumberSequenceReader(const T& start): current(start) { }
+
+            bool has_next() const {
+                return current < std::numeric_limits<T>::max();
+            }
+
+            T next() {
+                return current++;
+            }
+        };
     }
 
-    template <typename T, typename Pred>
-    rapidcsv::read::CopyIfReader<T, Pred> r_copy_if(rapidcsv::read::Reader<T>&& reader, Pred predicate) {
-        return rapidcsv::read::CopyIfReader<T, Pred>(std::move(reader), predicate);
-    }
+    namespace read {
+        template <typename T, typename R, typename Trans>
+        auto r_transform(Reader<T>&& reader, Trans transformer)
+        -> TransformReader<T, R, Trans> {
+            return TransformReader<T, R, Trans>(std::move(reader), transformer);
+        }
 
-    template<typename T, typename R, typename InputIt, typename Pred, typename Trans>
-    rapidcsv::read::Reader<R> transform_if(rapidcsv::read::Reader<T>&& reader, Trans trans, Pred pred) {
-        using rapidcsv::read::CopyIfReader;
-        using rapidcsv::read::SimpleReader;
-        using rapidcsv::read::TransformReader;
-        return CopyIfReader<R, Pred>(TransformReader<T, R, Trans>(std::move(reader), trans), pred);
+        template <typename T, typename Pred>
+        auto r_copy_if(Reader<T>&& reader, Pred predicate)
+        -> CopyIfReader<T, Pred> {
+            return CopyIfReader<T, Pred>(std::move(reader), predicate);
+        }
+
+        template <typename T>
+        auto sequence(const T &start) -> NumberSequenceReader<T> {
+            return NumberSequenceReader<T>(start);
+        }
+
+        template <typename T, typename ...Ts>
+        auto zipped(Reader<T>&& reader, Reader<Ts>&&... readers)
+        -> ZipReader<T, Ts...> {
+            return ZipReader<T, Ts...>(std::move(reader), std::move(readers));
+        }
+
+        template<typename T, typename R, typename InputIt, typename Pred, typename Trans>
+        Reader<R> transform_if(Reader<T>&& reader, Trans trans, Pred pred) {
+            return CopyIfReader<R, Pred>(TransformReader<T, R, Trans>(std::move(reader), trans), pred);
+        }
     }
 }
 

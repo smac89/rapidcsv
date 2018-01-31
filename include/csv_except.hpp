@@ -24,7 +24,7 @@ namespace rapidcsv {
         };
     }
 
-    namespace iterator {
+    namespace iter {
         struct past_the_end_iterator_exception: public std::runtime_error {
             past_the_end_iterator_exception():
                     std::runtime_error("Iterator has gone past the end") { }

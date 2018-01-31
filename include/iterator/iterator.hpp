@@ -6,7 +6,7 @@
 #include "csv_except.hpp"
 
 namespace rapidcsv {
-    namespace iterator {
+    namespace iter {
         template <typename T>
         class Iterator: public IteratorBase<T> {
             using rapidcsv::read::Reader;
@@ -46,6 +46,10 @@ namespace rapidcsv {
 
             virtual bool operator != (Iterator<T>& other) noexcept {
                 return _reader != other._reader;
+            }
+
+            ~Iterator<T>() {
+                _reader = nullptr;
             }
 
             static Iterator<T> &end_iterator() {

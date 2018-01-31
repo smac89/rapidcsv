@@ -4,7 +4,6 @@
 #include <string>
 #include <utility>
 #include "simple_reader.hpp"
-#include "iterator/field_iterator.hpp"
 #include "csv_except.hpp"
 #include "csv_constants.hpp"
 
@@ -14,8 +13,6 @@ namespace rapidcsv {
         using except::csv_unescaped_quote_exception;
         using except::csv_quote_inside_non_quote_field_exception;
         using except::csv_unterminated_quote_exception;
-        using iterator::CSVFieldIterator;
-        using iterator::Iterator;
 
         template <typename _StreamT>
         class CSVFieldReader: public SimpleReader<std::string, _StreamT> {

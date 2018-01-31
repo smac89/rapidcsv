@@ -13,6 +13,8 @@
 #include <numeric>
 
 #include "reader/simple_reader.hpp"
+#include "reader/supply_reader.hpp"
+#include "reader/readable_wrapper.hpp"
 #include "document/properties.hpp"
 #include "document/document.hpp"
 #include "csv_reader.hpp"
@@ -21,6 +23,8 @@
 namespace rapidcsv {
     class CSVDocument : public Document {
         using Document::Document;
+        using rapidcsv::read::SimpleReader;
+
     public:
         using Elem = std::pair<std::size_t, std::string>;
         using MeshRow = std::vector<Elem>;
@@ -105,15 +109,23 @@ namespace rapidcsv {
 }
 
 void rapidcsv::CSVDocument::load(const std::string& path) {
-    std::ifstream file(path, std::ios::in | std::ios::binary);
+    using rapidcsv::read::wrapReadable;
+    using rapidcsv::read::sequence;
+    using ParamType = std::tuple<std::size_t, std::string>;
 
-    auto reader =  r_transform(row_reader(std::istreambuf_iterator<char>{file},
-                                          std::istreambuf_iterator<char>{}), [](std::vector<std::string>&& data) {
+    auto reader =  r_transform(row_reader(std::ifstream (path, std::ios::in | std::ios::binary)), [](std::vector<std::string>&& row) {
         MeshRow transformRow;
-        std::transform(std::make_move_iterator(std::begin(data)),
-                       std::end(data),
-                       std::back_inserter(transformRow), [i = 0](std::string&& field))
+
+        auto zip = zipped(sequence(static_cast<std::size_t>(0)), wrapReadable(row));
+        std::transform(std::make_move_iterator(std::begin(zip)),
+                       std::make_move_iterator(std::end(zip)), std::back_inserter(transformRow),
+                       [](ParamType&& out) {
+                           return std::make_pair(
+                                   std::forward<std::size_t>(std::get<0>(std::forward<ParamType>(out))),
+                                   std::forward<std::string>(std::get<1>(std::forward<ParamType>(out))));
+                       });
     });
+
     for (auto&& row : reader) {
         this->_rowCount++;
         this->_columnCount = std::max(this->columnCount, row.size());
