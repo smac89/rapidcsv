@@ -277,30 +277,6 @@ public:
     // Column Methods -----------------------------------------------------
 
     template<typename T>
-    CellRange<T> GetColumn(const size_t columnIndex) const {
-        checkColumn(columnIndex);
-        return _GetColumn(columnIndex);
-    }
-
-    template<typename T>
-    CellRange<T> GetColumn(const std::string &columnName) const {
-        std::size_t columnIndex = checkColumn(columnName);
-        return _GetColumn(columnIndex);
-    }
-
-    template<typename T>
-    std::vector<T> GetColumn(const size_t columnIndex, const T& fillValue) const {
-        checkColumn(columnIndex);
-        return _GetColumn(columnIndex, fillValue);
-    }
-
-    template<typename T>
-    std::vector<T> GetColumn(const std::string &columnName, const T& fillValue) const {
-        std::size_t columnIndex = checkColumn(columnName);
-        return _GetColumn(columnIndex, fillValue);
-    }
-
-    template<typename T>
     void SetColumn(const size_t columnIndex, const std::vector<T> &columnData) {
         checkColumn(columnIndex);
         const size_t columnIdx = columnIndex + (mProperties.mRowNameIdx + 1);

@@ -11,7 +11,6 @@ namespace rapidcsv {
             IteratorBase();
         public:
             IteratorBase(IteratorBase<T>&&) = default;
-            IteratorBase<T>& operator = (IteratorBase<T>&&) = default;
 
             virtual const T operator *() = 0;
             virtual IteratorBase<T>& operator++ () = 0;

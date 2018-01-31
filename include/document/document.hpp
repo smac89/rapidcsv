@@ -18,8 +18,6 @@ namespace rapidcsv {
         Document(const Document &pDocument) = default;
         Document(Document &&document) = default;
 
-        virtual ~Document() {}
-
         virtual void load() {
             load(documentProperties.filePath());
         }
@@ -28,11 +26,25 @@ namespace rapidcsv {
             save(documentProperties.filePath());
         }
 
+        template<typename T>
+        virtual std::vector<T> GetColumn(const size_t columnIndex) const = 0;
+
+        template<typename T>
+        virtual std::vector<T> GetColumn(const std::string &columnName) const = 0;
+
+        template<typename T>
+        virtual std::vector<T> GetColumn(const size_t columnIndex, const T& fillValue) const = 0;
+
+        template<typename T>
+        virtual std::vector<T> GetColumn(const std::string &columnName, const T& fillValue) const = 0;
+
         virtual void load(const std::string& pPath) = 0;
         virtual void save(const std::string &pPath) const  = 0;
 
         virtual std::size_t rowCount() const = 0;
         virtual std::size_t columnCount() const = 0;
+
+        virtual ~Document() {}
 
     protected:
         Properties documentProperties;

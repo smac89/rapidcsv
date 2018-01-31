@@ -222,6 +222,11 @@ namespace rapidcsv {
             return CopyIfReader<T, Pred>(std::move(reader), predicate);
         }
 
+        template<typename T, typename R, typename InputIt, typename Pred, typename Trans>
+        Reader<R> transform_if(Reader<T>&& reader, Trans trans, Pred pred) {
+            return CopyIfReader<R, Pred>(TransformReader<T, R, Trans>(std::move(reader), trans), pred);
+        }
+
         template <typename T>
         auto sequence(const T &start) -> NumberSequenceReader<T> {
             return NumberSequenceReader<T>(start);
@@ -233,9 +238,12 @@ namespace rapidcsv {
             return ZipReader<T, Ts...>(std::move(reader), std::move(readers));
         }
 
-        template<typename T, typename R, typename InputIt, typename Pred, typename Trans>
-        Reader<R> transform_if(Reader<T>&& reader, Trans trans, Pred pred) {
-            return CopyIfReader<R, Pred>(TransformReader<T, R, Trans>(std::move(reader), trans), pred);
+        template <typename T>
+        auto enumerate(Reader<T>&& reader)
+            -> ZipReader<std::size_t, T> {
+            return zipped(
+                    std::forward<Reader<std::size_t>>(sequence(static_cast<std::size_t>(0))),
+                    std::move(reader));
         }
     }
 }

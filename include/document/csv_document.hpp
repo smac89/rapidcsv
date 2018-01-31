@@ -5,6 +5,7 @@
 #include <vector>
 #include <unordered_map>
 #include <tuple>
+#include <map>
 #include <utility>
 #include <fstream>
 #include <iterator>
@@ -26,8 +27,8 @@ namespace rapidcsv {
         using rapidcsv::read::SimpleReader;
 
     public:
-        using Elem = std::pair<std::size_t, std::string>;
-        using MeshRow = std::vector<Elem>;
+        using MeshRow = std::map<std::size_t, std::string>;
+        using Elem = MeshRow::value_type;
 
         std::size_t rowCount() const {
             return this->_rowCount;
@@ -40,24 +41,45 @@ namespace rapidcsv {
         void load(const std::string &pPath);
         void save(const std::string &pPath) const;
 
+        template<typename T>
+        std::vector<T> GetColumn(const size_t columnIndex) const;
+
+        template<typename T>
+        std::vector<T> GetColumn(const std::string &columnName) const;
+
+        template<typename T>
+        std::vector<T> GetColumn(const size_t columnIndex, const T& fillValue) const;
+
+        template<typename T>
+        std::vector<T> GetColumn(const std::string &columnName, const T& fillValue) const;
+
     private:
-        std::string toCsvRow(const std::vector<std::string> &row) {
+        std::string toCsvRow(const MeshRow &row) const {
             if (!row.empty()) {
                 std::ostringstream oss;
-                std::copy(std::begin(row), std::end(row), std::ostream_iterator<std::string>(
-                        oss, std::string(1, documentProperties.fieldSep()).c_str()));
-                std::string joined = oss.str();
-                return joined.erase(joined.rfind(documentProperties.fieldSep()));
+                auto rowIter = std::begin(row);
+                for (std::size_t i = 0; i < maxColumnCount; i++) {
+                    if (rowIter != std::end(row)) {
+                        if (rowIter->first == i) {
+                            oss << rowIter->second;
+                        }
+                        rowIter++;
+                    }
+
+                    if (i < maxColumnCount - 1) {
+                        oss << documentProperties.fieldSep();
+                    }
+                }
+                return oss.str();
             }
             return {};
         }
 
         template<typename T>
         std::vector<T> _GetColumn(const size_t columnIndex) const {
-            using rapidcsv::read::Reader;
-            using rapidcsv::read::SimpleReader;
-            using Interim = std::pair<bool, std::string>;
-            using TransFormType = Reader<Interim>;
+            using rapidcsv::read::simpleReader;
+            using rapidcsv::read::r_transform;
+            using rapidcsv::read::r_copy_if;
 
             std::vector<T> column;
             auto begin = (documentProperties.hasHeader() ? std::next(std::begin(documentMesh))
@@ -65,19 +87,33 @@ namespace rapidcsv {
             auto end = std::end(documentMesh);
 
             auto reader = std::move(r_copy_if(r_transform(
-                    SimpleReader(begin, end), [&columnIndex](const MeshRow &row) {
-                        auto lb = std::lower_bound(std::begin(row), std::end(row), columnIndex,
-                                                   [](const Elem& element, const std::size_t& value) {
-                                                       return element.first < value;
-                                                   });
-                        return (lb != std::end(row) && lb->first == columnIndex) ? std::make_pair(true, lb->second)
-                                                                                 : std::make_pair(false, "");
-                    }), [](const Interim& content) { return std::get<0>(content); }));
+                    simpleReader(begin, end), [&columnIndex](const MeshRow &row) {
+                        auto finder = row.find(columnIndex);
+                        return finder != std::end(row) ? std::make_pair(true, finder->second)
+                                                       : std::make_pair(false, "");
+                    }), [](const std::pair<bool, std::string>& content) { return std::get<0>(content); }));
 
             std::transform(std::begin(reader),
                            std::end(reader),
-                           std::back_inserter(column), [](Interim&& data) {
-                return std::move(convert::convert_to_val<T>(std::get<1>(data)));
+                           std::back_inserter(column), [](std::pair<bool, std::string>&& data) {
+                        return std::move(convert::convert_to_val<T>(std::get<1>(data)));
+                    });
+
+            return column;
+        }
+
+        template<typename T>
+        std::vector<T> _GetColumn(const size_t columnIndex, const T& fillValue) const {
+            using Interim = std::pair<bool, std::string>;
+
+            std::vector<T> column;
+            auto begin = (documentProperties.hasHeader() ? std::next(std::begin(documentMesh))
+                                                         : std::begin(documentMesh));
+            auto end = std::end(documentMesh);
+
+            std::transform(begin, end, std::back_inserter(column), [&columnIndex, &fillValue](const MeshRow &row) {
+                auto finder = row.find(columnIndex);
+                return finder != std::end(row) ? convert::convert_to_val<T>(finder->second): fillValue;
             });
 
             return column;
@@ -88,7 +124,7 @@ namespace rapidcsv {
             if (columnIter == columnNames.end()) {
                 throw std::out_of_range("column not found: " + columnName);
             }
-            return columnIter->second;
+            return getColumnIndex(columnIter->second);
         }
 
         std::size_t getColumnIndex(const std::size_t columnIndex) const {
@@ -105,25 +141,31 @@ namespace rapidcsv {
         std::unordered_map<std::string, std::size_t> rowNames;
         std::size_t _rowCount = 0;
         std::size_t _columnCount = 0;
+        std::size_t maxColumnCount = 0;
     };
 }
 
 void rapidcsv::CSVDocument::load(const std::string& path) {
     using rapidcsv::read::wrapReadable;
-    using rapidcsv::read::sequence;
+    using rapidcsv::read::enumerate;
     using ParamType = std::tuple<std::size_t, std::string>;
+    std::ifstream file (path, std::ios::in | std::ios::binary);
 
-    auto reader =  r_transform(row_reader(std::ifstream (path, std::ios::in | std::ios::binary)), [](std::vector<std::string>&& row) {
+    auto reader =  r_transform(row_reader(file), [](std::vector<std::string>&& row) {
         MeshRow transformRow;
 
-        auto zip = zipped(sequence(static_cast<std::size_t>(0)), wrapReadable(row));
+        auto zip = enumerate(wrapReadable(row));
+
         std::transform(std::make_move_iterator(std::begin(zip)),
-                       std::make_move_iterator(std::end(zip)), std::back_inserter(transformRow),
+                       std::make_move_iterator(std::end(zip)), std::inserter(transformRow,
+                                                                             std::begin(transformRow)),
                        [](ParamType&& out) {
                            return std::make_pair(
                                    std::forward<std::size_t>(std::get<0>(std::forward<ParamType>(out))),
                                    std::forward<std::string>(std::get<1>(std::forward<ParamType>(out))));
-                       });
+                       }
+        );
+        return transformRow;
     });
 
     for (auto&& row : reader) {
@@ -137,9 +179,8 @@ void rapidcsv::CSVDocument::load(const std::string& path) {
         if (this->_rowCount > 0) {
             --this->_rowCount;
         }
-        std::size_t i = 0;
-        for (auto &columnName : documentMesh[0]) {
-            columnNames[columnName] = i++;
+        for (auto &field : documentMesh[0]) {
+            columnNames[field.second] = field.first;
         }
     }
 
@@ -163,6 +204,30 @@ void rapidcsv::CSVDocument::save(const std::string &path) const {
     std::transform(std::begin(documentMesh), std::end(documentMesh),
                    std::ostream_iterator<std::string>(file, to_string(documentProperties.rowSep())),
                    std::bind(&CSVDocument::toCsvRow, this));
+}
+
+template<typename T>
+std::vector<T> rapidcsv::CSVDocument::GetColumn(const size_t columnIndex) const {
+    std::size_t realColumnIndex = getColumnIndex(columnIndex);
+    return _GetColumn(realColumnIndex);
+}
+
+template<typename T>
+std::vector<T> GetColumn(const std::string &columnName) const {
+    std::size_t columnIndex = getColumnIndex(columnName);
+    return _GetColumn(columnIndex);
+}
+
+template<typename T>
+std::vector<T> GetColumn(const size_t columnIndex, const T& fillValue) const {
+    std::size_t realColumnIndex = getColumnIndex(columnIndex);
+    return _GetColumn(columnIndex, fillValue);
+}
+
+template<typename T>
+std::vector<T> GetColumn(const std::string &columnName, const T& fillValue) const {
+    std::size_t columnIndex = getColumnIndex(columnName);
+    return _GetColumn(columnIndex, fillValue);
 }
 
 #endif //RAPIDCSV_CSV_DOCUMENT_HPP
