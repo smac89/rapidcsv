@@ -26,7 +26,7 @@ namespace rapidcsv {
                 return _begin != _end;
             }
 
-            virtual T next() {
+            virtual T& next() {
                 return *_begin++;
             }
         };
@@ -34,16 +34,16 @@ namespace rapidcsv {
         template <typename T, typename Readable,
                 typename ReadableIterator = Readable::iterator
         >
-        auto constexpr wrapReadable(Readable& container) -> ReadableWarpper<T, Readable, ReadableIterator> {
-            return ReadableWarpper<T, Readable, ReadableIterator>(container);
+        auto constexpr wrapped(Readable && container) -> ReadableWarpper<T, Readable, ReadableIterator> {
+            return ReadableWarpper<T, Readable, ReadableIterator>(std::forward<Readable>(container));
         }
 
-//        template <typename T, typename Readable,
-//                typename ReadableIterator = Readable::iterator
-//        >
-//        auto constexpr wrapReadable(Readable&& container) -> ReadableWarpper<T, Readable, ReadableIterator> {
-//            return ReadableWarpper<T, Readable, ReadableIterator>(std::forward<Readable>(container));
-//        }
+        template <typename T, typename Readable,
+                typename ReadableIterator = Readable::iterator
+        >
+        auto constexpr wrapped(const Readable &container) -> ReadableWarpper<T, Readable, ReadableIterator> {
+            return ReadableWarpper<T, Readable, ReadableIterator>(container);
+        }
     }
 }
 

@@ -59,6 +59,7 @@ namespace rapidcsv {
     public:
         Properties() : Properties("", RowSepType::LF, '"', ',', false, false) {}
         Properties &operator=(Properties &&) = default;
+        Properties &operator=(const Properties &) = default;
 
         std::string filePath() const {
             return _filePath;
@@ -105,6 +106,7 @@ namespace rapidcsv {
         using detail::CSVFieldSep;
         using detail::CSVHasRowLabel;
         using detail::CSVHasHeader;
+
         Properties properties;
 
     public:
@@ -115,6 +117,11 @@ namespace rapidcsv {
         explicit PropertiesBuilder(std::string filePath, RowSepType rowSep, char quote,
                                    char fieldSep, bool hasHeader, bool hasRowLabel) :
                 properties(std::move(filePath), rowSep, quote, fieldSep, hasHeader, hasRowLabel) {}
+
+        PropertiesBuilder& operator = (const Properties &properties) {
+            this->properties = properties;
+            return *this;
+        }
 
         PropertiesBuilder &rowSep(RowSepType rowSep) {
             this->properties = Properties(std::move(properties).filePath(),

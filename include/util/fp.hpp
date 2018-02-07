@@ -159,20 +159,21 @@ namespace rapidcsv {
     namespace read {
         template <typename ...Ts>
         class ZipReader: public Reader<std::tuple<Ts...>> {
+            using Readers = std::tuple<Reader<Ts>...>;
 
-            std::tuple<Reader<Ts>...> readers;
+            Readers readers;
         public:
             template <typename T>
             ZipReader(Reader<T>&& reader): ZipReader(std::piecewise_construct, std::forward(reader)) { }
             explicit ZipReader(Reader<Ts>&&... readers): ZipReader(std::forward_as_tuple(readers...)) { }
-            explicit ZipReader(std::tuple<Reader<Ts>...>&& rest): readers(std::move(rest)) { }
+            explicit ZipReader(Readers && rest): readers(std::move(rest)) { }
 
             bool has_next() const {
-                return detail::fold(&ZipReader<std::tuple<Ts...>>::HaveNextFunc, true, std::forward(readers));
+                return detail::fold(&ZipReader<std::tuple<Ts...>>::HaveNextFunc, true, std::forward<Readers>(readers));
             }
 
             std::tuple<Ts...> next() {
-                return detail::map(&ZipReader<std::tuple<Ts...>>::GetNextFunc, std::forward(readers));
+                return detail::map(&ZipReader<std::tuple<Ts...>>::GetNextFunc, std::forward<Readers>(readers));
             }
 
         private:
@@ -230,6 +231,11 @@ namespace rapidcsv {
         template <typename T>
         auto sequence(const T &start) -> NumberSequenceReader<T> {
             return NumberSequenceReader<T>(start);
+        }
+
+        template <>
+        auto sequence() -> decltype(sequence(static_cast<std::size_t>(0))) {
+            return sequence(static_cast<std::size_t>(0));
         }
 
         template <typename T, typename ...Ts>
