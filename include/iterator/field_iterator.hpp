@@ -2,11 +2,10 @@
 #define RAPIDCSV_FIELD_ITERATOR_HPP
 
 #include <string>
-#include "csv_except.hpp"
 #include "iterator.hpp"
 
 namespace rapidcsv {
-    namespace iterator {
+    namespace iter {
         class CSVFieldIterator: public Iterator<std::string> {
             using Iterator::Iterator;
         };

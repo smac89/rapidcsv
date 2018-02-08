@@ -5,7 +5,6 @@
 #include <utility>
 #include "simple_reader.hpp"
 #include "csv_except.hpp"
-#include "csv_constants.hpp"
 
 namespace rapidcsv {
     namespace read {

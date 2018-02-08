@@ -3,9 +3,7 @@
 
 #include <string>
 #include <utility>
-#include "reader.hpp"
 #include "field_reader.hpp"
-#include "csv_constants.hpp"
 
 namespace rapidcsv {
     namespace read {

@@ -97,12 +97,12 @@ namespace rapidcsv {
             // GET
             template<typename T>
             virtual T GetCell(const size_t rowIndex, const size_t columnIndex) const {
-                return rapidcsv::convert::convert_to_val(GetCell(columnIndex, rowIndex));
+                return rapidcsv::convert::convert_to_val(GetCell(rowIndex, columnIndex));
             }
 
             template<typename T>
             virtual T GetCell(const std::string &rowName, const std::string &columnName) const {
-                return rapidcsv::convert::convert_to_val(GetCell(columnName, rowName));
+                return rapidcsv::convert::convert_to_val(GetCell(rowName, columnName));
             }
 
             template<>

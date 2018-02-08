@@ -17,11 +17,33 @@
 #include <string>
 #include <cstddef>
 
-#include "csv_reader.hpp"
-#include "csv_iterator.hpp"
-#include "csv_constants.hpp"
+#include "csv_document.hpp"
 
 namespace rapidcsv {
+    using namespace doc;
+
+    //////////////////////////////////////////////////////////
+    /////////////////////// CONSTANTS ////////////////////////
+    //////////////////////////////////////////////////////////
+
+    static constexpr char CR = '\r';
+    static constexpr char LF = '\n';
+    static constexpr const char CRLF[3] = "\r\n";
+    static constexpr auto bufLength = 64 * 1024;
+
+    //////////////////////////////////////////////////////////
+    //////////////////////// DOCUMENT ////////////////////////
+    //////////////////////////////////////////////////////////
+
+    void save(const Document& document);
+    void save(const Document& document, const std::string& path);
+
+    Document load(const Properties &properties);
+    Document load(const std::string& path);
+
+    //////////////////////////////////////////////////////////
+    ////////////////////// CONVERTERS ////////////////////////
+    //////////////////////////////////////////////////////////
 
     namespace convert {
         template<typename T>

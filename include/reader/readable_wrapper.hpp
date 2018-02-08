@@ -34,7 +34,7 @@ namespace rapidcsv {
         template <typename T, typename Readable,
                 typename ReadableIterator = Readable::iterator
         >
-        auto constexpr wrapped(Readable && container) -> ReadableWarpper<T, Readable, ReadableIterator> {
+        auto constexpr wrapped(Readable container) -> ReadableWarpper<T, Readable, ReadableIterator> {
             return ReadableWarpper<T, Readable, ReadableIterator>(std::forward<Readable>(container));
         }
 
