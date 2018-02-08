@@ -24,11 +24,22 @@
 namespace rapidcsv {
     namespace doc {
         class CSVDocument : public Document {
+            friend Document rapidcsv::load(const std::string&);
+            friend Document rapidcsv::load(const Properties&);
+            friend void rapidcsv::save(const Document&);
+            friend void rapidcsv::save(const doc::Document&, const std::string&);
+
             using Document::Document;
             using rapidcsv::read::SimpleReader;
 
             using MeshRow = std::unordered_map<std::size_t, std::string>;
             using Entry = MeshRow::value_type;
+
+            CSVDocument(CSVDocument&&) = default;
+            CSVDocument(const CSVDocument&) = default;
+
+            explicit CSVDocument(std::vector<MeshRow>&& data, Properties properties)
+                    :Document(std::move(properties)), documentMesh(std::move(data)) {}
 
         public:
 
@@ -160,53 +171,108 @@ namespace rapidcsv {
             }
 
             virtual std::vector<std::string> RemoveRow (const size_t rowIndex) {
-                const 
-                MeshRow& meshRow =
+                const normalizedIndex = getRowIndex(rowIndex);
+                MeshRow& meshRow = documentMesh[normalizedIndex];
+
+                std::vector<std::string> rowData(meshRow.size());
+                std::transform(std::make_move_iterator(std::begin(meshRow)),
+                               std::make_move_iterator(std::end(meshRow)),
+                               std::begin(rowData), std::get<1>);
+
+                return rowData;
             }
 
-            virtual std::vector<std::string> RemoveRow(const std::string &rowName) = 0;
+            virtual std::vector<std::string> RemoveRow(const std::string &rowName) {
+                return RemoveRow(getRowIndex(rowName));
+            }
+
+            //////////////////////////////////////////////////////////
+            //////////////////////// CELLS ///////////////////////////
+            //////////////////////////////////////////////////////////
+
+            // GET
+            template<>
+            virtual std::string GetCell(const std::size_t rowIndex, const std::size_t columnIndex) const {
+                auto normalizedRowIndex = getRowIndex(rowIndex);
+                auto normalizedColumnIndex = getColumnIndex(columnIndex);
+                return documentMesh[normalizedRowIndex][normalizedColumnIndex];
+            }
+
+            template<>
+            virtual std::string GetCell(const std::string &rowName, const std::string &columnName) const {
+                return GetCell(getRowIndex(rowName), getColumnIndex(columnName));
+            }
+
+            // SET
+            template<>
+            virtual void SetCell(const std::size_t rowIndex, const std::size_t columnIndex, const std::string& value) {
+                auto normalizedRowIndex = getRowIndex(rowIndex);
+                auto normalizedColumnIndex = getColumnIndex(columnIndex);
+                documentMesh[normalizedRowIndex][normalizedColumnIndex] = value;
+            }
+
+            template<>
+            virtual void SetCell(const std::string &rowName, const std::string &columnName, const std::string& value) {
+                SetCell(getRowIndex(rowName), getColumnIndex(columnName), value);
+            }
+
+            // REMOVE
+            virtual std::string RemoveCell(const std::size_t rowIndex, const std::size_t columnIndex) {
+                auto normalizedRowIndex = getRowIndex(rowIndex);
+                auto normalizedColumnIndex = getColumnIndex(columnIndex);
+
+                MeshRow& row = documentMesh[normalizedRowIndex];
+                auto cellValue = std::move(row[normalizedColumnIndex]);
+                row.erase(normalizedColumnIndex);
+
+                return cellValue;
+            }
+
+            virtual std::string RemoveCell(const std::string &rowName, const std::string &columnName) {
+                return RemoveCell(getRowIndex(rowName), getColumnIndex(columnName));
+            }
+
+            //////////////////////////////////////////////////////////
+            //////////////////////// LABELS //////////////////////////
+            //////////////////////////////////////////////////////////
+
+            // SET
+            virtual void SetColumnLabel(const std::string &columnLabel, const std::string &newColumnLabel) {
+                auto normalizedColumnIndex = getColumnIndex(columnLabel);
+
+                documentMesh[0][normalizedColumnIndex] = newColumnLabel;
+
+                columnNames.erase(columnLabel);
+                columnNames[newColumnLabel] = normalizedColumnIndex;
+            }
+
+            // GET
+            virtual std::string GetColumnLabel(std::size_t columnIndex) {
+                auto normalizedColumnIndex = getColumnIndex(columnIndex);
+                return documentMesh[0][normalizedColumnIndex];
+            }
+
+            //////////////////////////////////////////////////////////
+            //////////////////////// SIZING //////////////////////////
+            //////////////////////////////////////////////////////////
+            virtual std::size_t rowCount(const std::size_t rowIndex) const {
+                auto normalizedRowIndex = getRowIndex(rowIndex);
+                return documentMesh[normalizedRowIndex].size();
+            }
+
+            virtual std::size_t rowCount(const std::string& rowName) const {
+                return rowCount(getRowIndex(rowName));
+            }
+
+            virtual std::size_t maxRowCount() const {
+                return _rowCount;
+            }
+
+            virtual std::size_t columnCount() const {
+                return _columnCount;
+            }
+
         private:
-            std::string toCsvRow(const MeshRow &row) const {
-                if (!row.empty()) {
-                    std::ostringstream oss;
-                    auto rowIter = std::begin(row);
-                    for (std::size_t i = 0; i < maxColumnCount; i++) {
-                        if (rowIter != std::end(row)) {
-                            if (rowIter->first == i) {
-                                oss << rowIter->second;
-                            }
-                            rowIter++;
-                        }
-
-                        if (i < maxColumnCount - 1) {
-                            oss << documentProperties.fieldSep();
-                        }
-                    }
-                    return oss.str();
-                }
-                return {};
-            }
-
-            template <typename In, typename Pos>
-            std::string to_csv_row(In begin, In end, Pos func) const {
-                std::ostringstream oss;
-                auto columnCount = columnCount();
-
-                for (auto i = 0; i < columnCount; i++) {
-                    if (begin != end) {
-                        if (func(*begin) == i) {
-                            oss << *begin++;
-                        }
-                    }
-
-                    if (i < columnCount - 1) {
-                        oss << documentProperties.fieldSep();
-                    }
-                }
-
-                return oss.str();
-            }
-
             template<typename T>
             std::vector<T> _GetColumn(const size_t columnIndex) const {
                 using rapidcsv::read::simpleReader;
@@ -250,6 +316,14 @@ namespace rapidcsv {
                 return column;
             }
 
+            inline std::size_t getColumnIndex(const std::string &columnName) const {
+                auto columnIter = columnNames.find(columnName);
+                if (columnIter == columnNames.end()) {
+                    throw std::out_of_range("column not found: " + columnName);
+                }
+                return columnIter->second;
+            }
+
             std::vector<std::string> _GetRow(const std::size_t rowIndex) const {
                 using rapidcsv::read::sequence;
                 using rapidcsv::read::r_copy_if;
@@ -267,15 +341,7 @@ namespace rapidcsv {
                 return data;
             }
 
-            std::size_t getColumnIndex(const std::string &columnName) const {
-                auto columnIter = columnNames.find(columnName);
-                if (columnIter == columnNames.end()) {
-                    throw std::out_of_range("column not found: " + columnName);
-                }
-                return columnIter->second;
-            }
-
-            std::size_t getColumnIndex(const std::size_t columnIndex) const {
+            inline std::size_t getColumnIndex(const std::size_t columnIndex) const {
                 auto normalizedColumn = columnIndex + (documentProperties.hasRowLabel() ? 1 : 0);
                 if (columnIndex >= this->columnCount() || normalizedColumn >= columnCount()) {
                     throw std::out_of_range(std::string("column out of range : ") + columnIndex);
@@ -283,15 +349,15 @@ namespace rapidcsv {
                 return normalizedColumn;
             }
 
-            std::size_t getRowIndex(const std::string &rowName) const {
-                auto rowIter = rowNames.find(std::cref(rowName));
+            inline std::size_t getRowIndex(const std::string &rowName) const {
+                auto rowIter = rowNames.find(rowName);
                 if (rowIter == std::end(rowNames)) {
                     throw std::out_of_range("Row label not found");
                 }
                 return rowIter->second;
             }
 
-            std::size_t getRowIndex(const std::size_t rowIndex) const {
+            inline std::size_t getRowIndex(const std::size_t rowIndex) const {
                 auto normalizedRow = rowIndex + (documentProperties.hasHeader() ? 1 : 0);
                 if (rowIndex >= maxRowCount() || normalizedRow >= maxRowCount()) {
                     throw std::out_of_range(std::string("Row index out of range ") + rowIndex);
@@ -299,34 +365,114 @@ namespace rapidcsv {
                 return normalizedRow;
             }
 
-            // Label Methods ------------------------------------------------------
-            void setColumnLabel(const std::string& oldColumnLabel, const std::string &newColumnLabel) {
-                auto realColumnIndex = getColumnIndex(oldColumnLabel);
-                columnNames.erase(oldColumnLabel);
-                columnNames[newColumnLabel] = realColumnIndex;
-            }
-
-            void setRowLabel(const std::string& oldRowLabel, const std::string &newRowLabel) {
-                bool found;
-                std::tie(found, std::ignore) = GetRow(rowIndex)
-                if (mProperties.hasRowLabel()) {
-
-                }
-                const std::size_t rowIdx = rowIndex + (mProperties.mColumnNameIdx + 1);
-                mRowNames[rowLabel] = rowIdx;
-                if (mProperties.mRowNameIdx >= 0) {
-                    mData.at(rowIdx).at(static_cast<std::size_t>(mProperties.mRowNameIdx)) = rowLabel;
-                }
-            }
-
         private:
             std::vector<MeshRow> documentMesh;
             std::unordered_map<std::string, std::size_t> columnNames;
-            std::unordered_map<std::reference_wrapper<std::string>, std::size_t> rowNames;
+            std::unordered_map<std::string, std::size_t> rowNames;
             std::size_t _rowCount = 0;
             std::size_t _columnCount = 0;
-            std::size_t maxColumnCount = 0;
         };
+    }
+}
+
+namespace rapidcsv {
+    void save(const doc::Document& document) {
+        using rapidcsv::operators::to_string;
+        using rapidcsv::read::wrapped;
+        using rapidcsv::read::zipped;
+
+        std::ofstream file(path, std::ios::out | std::ios::binary);
+        if (documentProperties.hasHeader()) {
+            std::vector<std::string> header(columnNames.size());
+
+            std::transform(std::begin(columnNames), std::end(columnNames), std::begin(header), [](const Title& title) {
+                return title.first;
+            });
+
+            if (documentProperties.hasRowLabel() && !(columnNames.empty() || documentMesh.empty())) {
+                file << documentProperties.fieldSep();
+            }
+
+            file << to_csv_row(std::begin(header), std::end(header),
+                               [&columnNames](const std::string& value) { return columnNames[value]; })
+                 << to_string(documentProperties.rowSep());
+        }
+
+//    std::vector<std::string> rowsName(rowNames.size());
+//    std::transform(std::begin(rowNames), std::end(rowNames), std::begin(rowsName), [](const Title& title) {
+//        return title.first;
+//    });
+
+//    auto cmp = [&rowNames](const std::string& s1, const std::string& s2) {
+//        return rowNames[s1] < rowNames[s2];
+//    };
+//
+//    std::map<std::string, std::size_t, decltype(cmp)> rowsNames(cmp);
+//    rowsNames.insert(std::begin(rowNames), std::end(rowNames));
+//
+//    auto
+
+
+        std::transform(std::begin(documentMesh), std::end(documentMesh),
+                       std::ostream_iterator<std::string>(file, to_string(documentProperties.rowSep())),
+                       [](const MeshRow& row) {
+                           return to_csv_row()
+                       }
+        std::bind(&CSVDocument::toCsvRow, this));
+    }
+
+    doc::Document load(const Properties &properties) {
+        using rapidcsv::read::wrapped;
+        using rapidcsv::read::enumerate;
+        using ParamType = std::tuple<std::size_t, std::string>;
+        std::ifstream file (properties.filePath(), std::ios::in | std::ios::binary);
+
+        auto reader =  r_transform(row_reader(file), [](std::vector<std::string>&& row) {
+            rapidcsv::doc::CSVDocument::MeshRow transformRow;
+
+            auto zip = enumerate(wrapped(row));
+
+            std::transform(std::make_move_iterator(std::begin(zip)),
+                           std::make_move_iterator(std::end(zip)), std::inserter(transformRow,
+                                                                                 std::begin(transformRow)),
+                           [](ParamType&& out) {
+                               return std::make_pair(
+                                       std::forward<std::size_t>(std::get<0>(std::forward<ParamType>(out))),
+                                       std::forward<std::string>(std::get<1>(std::forward<ParamType>(out))));
+                           }
+            );
+            return transformRow;
+        });
+    }
+
+    template <typename In, typename Pos>
+    std::string to_csv_row(In begin, In end, Pos func) {
+        std::ostringstream oss;
+        auto columnCount = columnCount();
+
+        for (auto i = 0; i < columnCount; i++) {
+            if (begin != end) {
+                if (func(*begin) == i) {
+                    oss << *begin++;
+                }
+            }
+
+            if (i < columnCount - 1) {
+                oss << documentProperties.fieldSep();
+            }
+        }
+
+        return oss.str();
+    }
+
+    doc::Document load(const std::string& path) {
+        return load(PropertiesBuilder().filePath(path));
+    }
+
+    void save(const doc::Document& document, const std::string& path) {
+        PropertiesBuilder builder = document.documentProperties;
+        document.documentProperties = std::move(builder.filePath(path));
+        save(document);
     }
 }
 
@@ -352,102 +498,6 @@ void rapidcsv::CSVDocument::load(const std::string& path) {
         );
         return transformRow;
     });
-
-    for (auto&& row : reader) {
-        this->_rowCount++;
-        this->_columnCount = std::max(this->columnCount, row.size());
-        this->documentMesh.emplace_back(std::move(row));
-    }
-
-    // Set up column labels
-    if (documentProperties.hasHeader()) {
-        if (this->_rowCount > 0) {
-            --this->_rowCount;
-        }
-        for (auto &field : documentMesh[0]) {
-            columnNames[field.second] = field.first;
-        }
-    }
-
-    // Set up row labels
-    if (documentProperties.hasRowLabel()) {
-        if (this->_columnCount > 0) {
-            --this->_columnCount;
-        }
-        std::size_t i = 0;
-        for (auto &dataRow : documentMesh) {
-            rowNames[dataRow[0]] = i++;
-        }
-    }
-}
-
-void rapidcsv::CSVDocument::save(const std::string &path) const {
-    using rapidcsv::operators::to_string;
-    using rapidcsv::read::wrapped;
-    using rapidcsv::read::zipped;
-
-    std::ofstream file(path, std::ios::out | std::ios::binary);
-    if (documentProperties.hasHeader()) {
-        std::vector<std::string> header(columnNames.size());
-
-        std::transform(std::begin(columnNames), std::end(columnNames), std::begin(header), [](const Title& title) {
-            return title.first;
-        });
-
-        if (documentProperties.hasRowLabel() && !(columnNames.empty() || documentMesh.empty())) {
-            file << documentProperties.fieldSep();
-        }
-
-        file << to_csv_row(std::begin(header), std::end(header),
-                           [&columnNames](const std::string& value) { return columnNames[value]; })
-             << to_string(documentProperties.rowSep());
-    }
-
-//    std::vector<std::string> rowsName(rowNames.size());
-//    std::transform(std::begin(rowNames), std::end(rowNames), std::begin(rowsName), [](const Title& title) {
-//        return title.first;
-//    });
-
-//    auto cmp = [&rowNames](const std::string& s1, const std::string& s2) {
-//        return rowNames[s1] < rowNames[s2];
-//    };
-//
-//    std::map<std::string, std::size_t, decltype(cmp)> rowsNames(cmp);
-//    rowsNames.insert(std::begin(rowNames), std::end(rowNames));
-//
-//    auto
-
-
-    std::transform(std::begin(documentMesh), std::end(documentMesh),
-                   std::ostream_iterator<std::string>(file, to_string(documentProperties.rowSep())),
-                   [](const MeshRow& row) {
-                       return to_csv_row()
-                   }
-                   std::bind(&CSVDocument::toCsvRow, this));
-}
-
-template<typename T>
-std::vector<T> rapidcsv::CSVDocument::GetColumn(const size_t columnIndex) const {
-    auto realColumnIndex = getColumnIndex(columnIndex);
-    return _GetColumn(realColumnIndex);
-}
-
-template<typename T>
-std::vector<T> GetColumn(const std::string &columnName) const {
-    auto columnIndex = getColumnIndex(columnName);
-    return _GetColumn(columnIndex);
-}
-
-template<typename T>
-std::vector<T> GetColumn(const size_t columnIndex, const T& fillValue) const {
-    auto realColumnIndex = getColumnIndex(columnIndex);
-    return _GetColumn(columnIndex, fillValue);
-}
-
-template<typename T>
-std::vector<T> GetColumn(const std::string &columnName, const T& fillValue) const {
-    auto columnIndex = getColumnIndex(columnName);
-    return _GetColumn(columnIndex, fillValue);
 }
 
 #endif //RAPIDCSV_CSV_DOCUMENT_HPP
