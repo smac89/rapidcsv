@@ -12,179 +12,134 @@ namespace rapidcsv {
         CRLF, CR, LF
     };
 
-    namespace detail {
-        template<typename P>
-        class CSVProperty {
-            friend class rapidcsv::Properties;
-        protected:
-            P value;
-        public:
-            CSVProperty(const P &_value) : value(_value) {}
-        };
-
-        struct CSVRowSep : public CSVProperty<RowSepType> {
-            using CSVProperty::CSVProperty;
-        };
-
-        struct CSVHasRowLabel : public CSVProperty<bool> {
-            using CSVProperty::CSVProperty;
-        };
-
-        struct CSVHasHeader : public CSVProperty<bool> {
-            using CSVProperty::CSVProperty;
-        };
-
-        struct CSVFieldSep : public CSVProperty<char> {
-            using CSVProperty::CSVProperty;
-        };
-
-        struct CSVQuote : public CSVProperty<char> {
-            using CSVProperty::CSVProperty;
-        };
-
-        struct CSVQuoteEscape : public CSVQuote {
-            using CSVQuote::CSVQuote;
-        };
-    }
-
     class Properties {
         friend class PropertiesBuilder;
-
-        using detail::CSVQuote;
-        using detail::CSVRowSep;
-        using detail::CSVFieldSep;
-        using detail::CSVHasRowLabel;
-        using detail::CSVHasHeader;
 
     public:
         Properties() : Properties("", RowSepType::LF, '"', ',', false, false) {}
         Properties &operator=(Properties &&) = default;
         Properties &operator=(const Properties &) = default;
+        Properties(Properties &&) = default;
+        Properties(const Properties &) = default;
 
         std::string filePath() const {
             return _filePath;
         }
 
         char quote() const {
-            return _quote.value;
+            return _quote;
         }
 
         char fieldSep() const {
-            return _fieldSep.value;
+            return _fieldSep;
         }
 
         bool hasHeader() const {
-            return _hasHeader.value;
+            return _hasHeader;
         }
 
         bool hasRowLabel() const {
-            return _hasRowLabel.value;
+            return _hasRowLabel;
         }
 
         RowSepType rowSep() const {
-            return _rowSep.value;
+            return _rowSep;
         }
 
     private:
 
-        explicit Properties(std::string &&pPath, CSVRowSep &&rowSep, CSVQuote &&quote,
-                            CSVFieldSep &&fieldSep, CSVHasHeader &&hasHeader, CSVHasRowLabel &&hasRowLabel) :
+        explicit Properties(std::string &&pPath, RowSepType rowSep, char quote,
+                            char fieldSep, bool hasHeader, bool hasRowLabel) :
                 _filePath(pPath), _quote(quote), _fieldSep(fieldSep),
                 _hasHeader(hasHeader), _hasRowLabel(hasRowLabel), _rowSep(rowSep) {}
 
-        const std::string _filePath;
-        const detail::CSVQuote _quote;
-        const detail::CSVFieldSep _fieldSep;
-        const detail::CSVHasHeader _hasHeader;
-        const detail::CSVHasRowLabel _hasRowLabel;
-        const detail::CSVRowSep _rowSep;
+        std::string _filePath;
+        char _quote;
+        char _fieldSep;
+        bool _hasHeader;
+        bool _hasRowLabel;
+        RowSepType _rowSep;
     };
 
     class PropertiesBuilder {
-        using detail::CSVQuote;
-        using detail::CSVRowSep;
-        using detail::CSVFieldSep;
-        using detail::CSVHasRowLabel;
-        using detail::CSVHasHeader;
-
-        Properties properties;
+        Properties prop;
 
     public:
         PropertiesBuilder() : PropertiesBuilder(Properties()) {}
 
-        explicit PropertiesBuilder(Properties &&properties) : properties(std::move(properties)) {}
+        explicit PropertiesBuilder(Properties &&properties) : prop(std::move(properties)) {}
 
         explicit PropertiesBuilder(std::string filePath, RowSepType rowSep, char quote,
                                    char fieldSep, bool hasHeader, bool hasRowLabel) :
-                properties(std::move(filePath), rowSep, quote, fieldSep, hasHeader, hasRowLabel) {}
+                prop(std::move(filePath), rowSep, quote, fieldSep, hasHeader, hasRowLabel) {}
 
         PropertiesBuilder& operator = (const Properties &properties) {
-            this->properties = properties;
+            this->prop = std::move(properties);
             return *this;
         }
 
         PropertiesBuilder &rowSep(RowSepType rowSep) {
-            this->properties = Properties(std::move(properties).filePath(),
+            this->prop = Properties(std::move(prop).filePath(),
                                           std::move(rowSep),
-                                          std::move(properties).quote(),
-                                          std::move(properties).fieldSep(),
-                                          std::move(properties).hasHeader(),
-                                          std::move(properties).hasRowLabel());
+                                          std::move(prop).quote(),
+                                          std::move(prop).fieldSep(),
+                                          std::move(prop).hasHeader(),
+                                          std::move(prop).hasRowLabel());
             return *this;
         }
 
         PropertiesBuilder &quote(char quote) {
-            this->properties = Properties(std::move(properties).filePath(),
-                                          std::move(properties).rowSep(),
+            this->prop = Properties(std::move(prop).filePath(),
+                                          std::move(prop).rowSep(),
                                           std::move(quote),
-                                          std::move(properties).fieldSep(),
-                                          std::move(properties).hasHeader(),
-                                          std::move(properties).hasRowLabel());
+                                          std::move(prop).fieldSep(),
+                                          std::move(prop).hasHeader(),
+                                          std::move(prop).hasRowLabel());
             return *this;
         }
 
         PropertiesBuilder &fieldSep(char fieldSep) {
-            this->properties = Properties(std::move(properties).filePath(),
-                                          std::move(properties).rowSep(),
-                                          std::move(properties).quote(),
+            this->prop = Properties(std::move(prop).filePath(),
+                                          std::move(prop).rowSep(),
+                                          std::move(prop).quote(),
                                           std::move(fieldSep),
-                                          std::move(properties).hasHeader(),
-                                          std::move(properties).hasRowLabel());
+                                          std::move(prop).hasHeader(),
+                                          std::move(prop).hasRowLabel());
             return *this;
         }
 
         PropertiesBuilder &hasHeader() {
-            this->properties = Properties(std::move(properties).filePath(),
-                                          std::move(properties).rowSep(),
-                                          std::move(properties).quote(),
-                                          std::move(properties).fieldSep(),
+            this->prop = Properties(std::move(prop).filePath(),
+                                          std::move(prop).rowSep(),
+                                          std::move(prop).quote(),
+                                          std::move(prop).fieldSep(),
                                           true,
-                                          std::move(properties).hasRowLabel());
+                                          std::move(prop).hasRowLabel());
             return *this;
         }
 
         PropertiesBuilder &hasRowLabel() {
-            this->properties = Properties(std::move(properties).filePath(),
-                                          std::move(properties).rowSep(),
-                                          std::move(properties).quote(),
-                                          std::move(properties).fieldSep(),
-                                          std::move(properties).hasHeader(),
+            this->prop = Properties(std::move(prop).filePath(),
+                                          std::move(prop).rowSep(),
+                                          std::move(prop).quote(),
+                                          std::move(prop).fieldSep(),
+                                          std::move(prop).hasHeader(),
                                           true);
             return *this;
         }
 
         PropertiesBuilder &filePath(std::string filePath) {
-            this->properties = Properties(std::move(filePath),
-                                          std::move(properties).rowSep(),
-                                          std::move(properties).quote(),
-                                          std::move(properties).fieldSep(),
-                                          std::move(properties).hasHeader(),
-                                          std::move(properties).hasRowLabel());
+            this->prop = Properties(std::move(filePath),
+                                          std::move(prop).rowSep(),
+                                          std::move(prop).quote(),
+                                          std::move(prop).fieldSep(),
+                                          std::move(prop).hasHeader(),
+                                          std::move(prop).hasRowLabel());
             return *this;
         }
 
         Properties build() const {
-            return properties;
+            return prop;
         }
 
         operator Properties() const { return build(); }
@@ -192,11 +147,11 @@ namespace rapidcsv {
     private:
         explicit PropertiesBuilder(std::string &&pPath, RowSepType &&rowSep, char &&quote,
                                    char &&fieldSep, bool &&hasHeader, bool &&hasRowLabel) :
-                properties(std::forward<std::string>(pPath), rowSep, quote, fieldSep, hasHeader, hasRowLabel) {}
+                prop(std::forward<std::string>(pPath), rowSep, quote, fieldSep, hasHeader, hasRowLabel) {}
     };
 
     namespace operators {
-        constexpr const char* to_string(RowSepType rowSepType) {
+        const char* to_string(RowSepType rowSepType) {
             switch (rowSepType) {
                 case RowSepType::CRLF:
                     return "\r\n";

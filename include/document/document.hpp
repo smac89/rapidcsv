@@ -5,17 +5,24 @@
 #include <vector>
 #include <string>
 #include <unordered_map>
+#include "csv_convert.hpp"
 #include "document/properties.hpp"
 
 namespace rapidcsv {
 
     namespace doc {
+
         class Document {
         protected:
             Properties documentProperties;
             Document(Properties properties): documentProperties(std::move(properties)) {}
 
         public:
+            Document(Document&&) = default;
+            Document(const Document&) = default;
+
+            Document&operator = (Document&&) = default;
+            Document&operator = (const Document&) = default;
 
             //////////////////////////////////////////////////////////
             /////////////////////// COLUMNS //////////////////////////
@@ -23,47 +30,43 @@ namespace rapidcsv {
 
             //GET
             template<typename T>
-            virtual std::vector<T> GetColumn(const size_t columnIndex, const T& fillValue) const = 0;
+            std::vector<T> GetColumn(const size_t columnIndex, const T& fillValue) const;
 
             template<typename T>
-            virtual std::vector<T> GetColumn(const std::string &columnName, const T& fillValue) const = 0;
+            std::vector<T> GetColumn(const std::string &columnName, const T& fillValue) const;
 
             template<typename T>
-            virtual std::vector<T> GetColumn(const size_t columnIndex) const = 0;
+            std::vector<T> GetColumn(const size_t columnIndex) const;
 
             template<typename T>
-            virtual std::vector<T> GetColumn(const std::string &columnName) const = 0;
+            std::vector<T> GetColumn(const std::string &columnName) const;
 
             // SET
             template<typename T>
-            virtual std::size_t SetColumn(const size_t columnIndex, const std::vector<T>& colData) {
+            std::size_t SetColumn(const size_t columnIndex, const std::vector<T>& colData) {
                 std::vector<std::string> converted(colData.size());
                 std::transform(std::begin(colData), std::end(colData),
                                std::make_move_iterator(std::begin(converted)),
-                               &rapidcsv::convert::convert_to_string);
+                               &rapidcsv::convert::convert_to_string<T>);
                 return SetColumn(columnIndex, std::move(converted));
             }
 
             template<typename T>
-            virtual std::size_t SetColumn(const std::string &columnName, const std::vector<T>& colData) {
+            std::size_t SetColumn(const std::string &columnName, const std::vector<T>& colData) {
                 std::vector<std::string> converted(colData.size());
                 std::transform(std::begin(colData), std::end(colData),
                                std::make_move_iterator(std::begin(converted)),
-                               &rapidcsv::convert::convert_to_string);
+                               &rapidcsv::convert::convert_to_string<T>);
                 return SetColumn(columnName, std::move(converted));
             }
 
-            template<>
-            virtual std::size_t SetColumn(const size_t columnIndex, const std::vector<std::string>& colData);
+            virtual std::size_t SetColumn(const size_t columnIndex, const std::vector<std::string>& colData) = 0;
 
-            template<>
-            virtual std::size_t SetColumn(const std::string &columnName, const std::vector<std::string>& colData);
+            virtual std::size_t SetColumn(const std::string &columnName, const std::vector<std::string>& colData) = 0;
 
-            template<>
-            virtual std::size_t SetColumn(const size_t columnIndex, std::vector<std::string>&& colData);
+            virtual std::size_t SetColumn(const size_t columnIndex, std::vector<std::string>&& colData) = 0;
 
-            template<>
-            virtual std::size_t SetColumn(const std::string &columnName, std::vector<std::string>&& colData);
+            virtual std::size_t SetColumn(const std::string &columnName, std::vector<std::string>&& colData) = 0;
 
             // REMOVE
             virtual std::size_t RemoveColumn(const size_t columnIndex) = 0;
@@ -96,35 +99,31 @@ namespace rapidcsv {
 
             // GET
             template<typename T>
-            virtual T GetCell(const size_t rowIndex, const size_t columnIndex) const {
-                return rapidcsv::convert::convert_to_val(GetCell(rowIndex, columnIndex));
+            T GetCell(const size_t rowIndex, const size_t columnIndex) const {
+                return rapidcsv::convert::convert_to_val<T>(GetCell(rowIndex, columnIndex));
             }
 
             template<typename T>
-            virtual T GetCell(const std::string &rowName, const std::string &columnName) const {
-                return rapidcsv::convert::convert_to_val(GetCell(rowName, columnName));
+            T GetCell(const std::string &rowName, const std::string &columnName) const {
+                return rapidcsv::convert::convert_to_val<T>(GetCell(rowName, columnName));
             }
 
-            template<>
             virtual std::string GetCell(const std::size_t rowIndex, const std::size_t columnIndex) const = 0;
 
-            template<>
             virtual std::string GetCell(const std::string &rowName, const std::string &columnName) const = 0;
 
             // SET
-            template<>
             virtual void SetCell(const std::size_t rowIndex, const std::size_t columnIndex, const std::string&) = 0;
 
-            template<>
             virtual void SetCell(const std::string &rowName, const std::string &columnName, const std::string&) = 0;
 
             template<typename T>
-            virtual void SetCell(const std::size_t rowIndex, const std::size_t columnIndex, const T& tVal) {
+            void SetCell(const std::size_t rowIndex, const std::size_t columnIndex, const T& tVal) {
                 SetCell(columnIndex, rowIndex, rapidcsv::convert::convert_to_string(tVal));
             }
 
             template<typename T>
-            virtual void SetCell(const std::string &rowName, const std::string &columnName, const T& tVal) {
+            void SetCell(const std::string &rowName, const std::string &columnName, const T& tVal) {
                 SetCell(columnName, rowName, rapidcsv::convert::convert_to_string(tVal));
             }
 
@@ -173,8 +172,8 @@ namespace rapidcsv {
     void save(const doc::Document& document);
     void save(const doc::Document& document, const std::string& path);
 
-    doc::Document load(const Properties &properties);
-    doc::Document load(const std::string& path);
+    doc::Document& load(const Properties &properties);
+    doc::Document& load(const std::string& path);
 }
 
 #endif //RAPIDCSV_DOCUMENT_HPP

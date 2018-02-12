@@ -19,6 +19,8 @@
 #include "document/properties.hpp"
 #include "document/document.hpp"
 #include "csv_reader.hpp"
+#include "csv_convert.hpp"
+#include "csv_iterator.hpp"
 #include "util/fp.hpp"
 
 namespace rapidcsv {
@@ -26,8 +28,8 @@ namespace rapidcsv {
         class CSVDocument : public Document {
             friend Document rapidcsv::load(const std::string&);
             friend Document rapidcsv::load(const Properties&);
-            friend void rapidcsv::save(const Document&);
-            friend void rapidcsv::save(const doc::Document&, const std::string&);
+            friend void rapidcsv::save(const doc::CSVDocument&);
+            friend void rapidcsv::save(const doc::CSVDocument&, const std::string&);
 
             using Document::Document;
             using rapidcsv::read::SimpleReader;
@@ -49,12 +51,12 @@ namespace rapidcsv {
 
             // GET
             template<typename T>
-            virtual std::vector<T> GetColumn(const size_t columnIndex, const T& fillValue) const override {
+            std::vector<T> GetColumn(const size_t columnIndex, const T& fillValue) const {
                 return _GetColumn(getColumnIndex(columnIndex), fillValue);
             }
 
             template<typename T>
-            virtual std::vector<T> GetColumn(const std::string &columnName, const T& fillValue) const override {
+            std::vector<T> GetColumn(const std::string &columnName, const T& fillValue) const {
                 return _GetColumn(getColumnIndex(columnName), fillValue);
             }
 
@@ -70,7 +72,7 @@ namespace rapidcsv {
 
             // SET
             template<>
-            virtual std::size_t SetColumn(const size_t columnIndex, const std::vector<std::string>& colData) {
+            std::size_t SetColumn(const size_t columnIndex, const std::vector<std::string>& colData) {
                 using rapidcsv::read::wrapped;
                 using rapidcsv::read::enumerate;
 
@@ -84,7 +86,7 @@ namespace rapidcsv {
             }
 
             template<>
-            virtual std::size_t SetColumn(const size_t columnIndex, std::vector<std::string>&& colData) {
+            std::size_t SetColumn(const size_t columnIndex, std::vector<std::string>&& colData) {
                 using rapidcsv::read::wrapped;
                 using rapidcsv::read::enumerate;
 
@@ -100,17 +102,17 @@ namespace rapidcsv {
             }
 
             template<>
-            virtual std::size_t SetColumn(const std::string &columnName, const std::vector<std::string>& colData) {
+            std::size_t SetColumn(const std::string &columnName, const std::vector<std::string>& colData) {
                 return SetColumn(getColumnIndex(columnName), colData);
             }
 
             template<>
-            virtual std::size_t SetColumn(const std::string &columnName, std::vector<std::string>&& colData) {
+            std::size_t SetColumn(const std::string &columnName, std::vector<std::string>&& colData) {
                 return SetColumn(getColumnIndex(columnName), std::forward<std::vector<std::string>>(colData));
             }
 
             // REMOVE
-            virtual std::size_t RemoveColumn(const size_t columnIndex) {
+            std::size_t RemoveColumn(const size_t columnIndex) {
                 std::size_t realColumnIndex = getColumnIndex(columnIndex);
 
                 for (const auto& row : documentMesh) {
@@ -120,7 +122,7 @@ namespace rapidcsv {
                 return documentMesh.size();
             }
 
-            virtual std::size_t RemoveColumn(const std::string &columnName) {
+            std::size_t RemoveColumn(const std::string &columnName) {
                 return RemoveColumn(getColumnIndex(columnName));
             }
 
@@ -129,16 +131,16 @@ namespace rapidcsv {
             //////////////////////////////////////////////////////////
 
             // GET
-            virtual std::vector<std::string> GetRow(const size_t rowIndex) const {
+            std::vector<std::string> GetRow(const size_t rowIndex) const {
                 return _GetRow(getRowIndex(rowIndex));
             }
 
-            virtual std::vector<std::string> GetRow(const std::string &rowName) const {
+            std::vector<std::string> GetRow(const std::string &rowName) const {
                 return _GetRow(getRowIndex(rowName));
             }
 
             // SET
-            virtual void SetRow(const size_t rowIndex, const std::vector<std::string> &row) {
+            void SetRow(const size_t rowIndex, const std::vector<std::string> &row) {
                 using rapidcsv::read::enumerate;
                 using rapidcsv::read::wrapped;
 
@@ -150,7 +152,7 @@ namespace rapidcsv {
                 documentMesh[getRowIndex(rowIndex)] = std::move(meshRow);
             }
 
-            virtual void SetRow(const size_t rowIndex, std::vector<std::string> &&row) {
+            void SetRow(const size_t rowIndex, std::vector<std::string> &&row) {
                 using rapidcsv::read::enumerate;
                 using rapidcsv::read::wrapped;
 
@@ -162,15 +164,15 @@ namespace rapidcsv {
                 documentMesh[getRowIndex(rowIndex)] = std::move(meshRow);
             }
 
-            virtual void SetRow(const std::string& rowName, const std::vector<std::string> &row) {
+            void SetRow(const std::string& rowName, const std::vector<std::string> &row) {
                 SetRow(getRowIndex(rowName), row);
             }
 
-            virtual void SetRow(const std::string& rowName, std::vector<std::string> &&row) {
+            void SetRow(const std::string& rowName, std::vector<std::string> &&row) {
                 SetRow(getRowIndex(rowName), std::forward<std::vector<std::string>>(row));
             }
 
-            virtual std::vector<std::string> RemoveRow (const size_t rowIndex) {
+            std::vector<std::string> RemoveRow (const size_t rowIndex) {
                 const normalizedIndex = getRowIndex(rowIndex);
                 MeshRow& meshRow = documentMesh[normalizedIndex];
 
@@ -182,7 +184,7 @@ namespace rapidcsv {
                 return rowData;
             }
 
-            virtual std::vector<std::string> RemoveRow(const std::string &rowName) {
+            std::vector<std::string> RemoveRow(const std::string &rowName) {
                 return RemoveRow(getRowIndex(rowName));
             }
 
@@ -192,32 +194,32 @@ namespace rapidcsv {
 
             // GET
             template<>
-            virtual std::string GetCell(const std::size_t rowIndex, const std::size_t columnIndex) const {
+            std::string GetCell(const std::size_t rowIndex, const std::size_t columnIndex) const {
                 auto normalizedRowIndex = getRowIndex(rowIndex);
                 auto normalizedColumnIndex = getColumnIndex(columnIndex);
                 return documentMesh[normalizedRowIndex][normalizedColumnIndex];
             }
 
             template<>
-            virtual std::string GetCell(const std::string &rowName, const std::string &columnName) const {
+            std::string GetCell(const std::string &rowName, const std::string &columnName) const {
                 return GetCell(getRowIndex(rowName), getColumnIndex(columnName));
             }
 
             // SET
             template<>
-            virtual void SetCell(const std::size_t rowIndex, const std::size_t columnIndex, const std::string& value) {
+            void SetCell(const std::size_t rowIndex, const std::size_t columnIndex, const std::string& value) {
                 auto normalizedRowIndex = getRowIndex(rowIndex);
                 auto normalizedColumnIndex = getColumnIndex(columnIndex);
                 documentMesh[normalizedRowIndex][normalizedColumnIndex] = value;
             }
 
             template<>
-            virtual void SetCell(const std::string &rowName, const std::string &columnName, const std::string& value) {
+            void SetCell(const std::string &rowName, const std::string &columnName, const std::string& value) {
                 SetCell(getRowIndex(rowName), getColumnIndex(columnName), value);
             }
 
             // REMOVE
-            virtual std::string RemoveCell(const std::size_t rowIndex, const std::size_t columnIndex) {
+            std::string RemoveCell(const std::size_t rowIndex, const std::size_t columnIndex) {
                 auto normalizedRowIndex = getRowIndex(rowIndex);
                 auto normalizedColumnIndex = getColumnIndex(columnIndex);
 
@@ -228,7 +230,7 @@ namespace rapidcsv {
                 return cellValue;
             }
 
-            virtual std::string RemoveCell(const std::string &rowName, const std::string &columnName) {
+            std::string RemoveCell(const std::string &rowName, const std::string &columnName) {
                 return RemoveCell(getRowIndex(rowName), getColumnIndex(columnName));
             }
 
@@ -237,7 +239,7 @@ namespace rapidcsv {
             //////////////////////////////////////////////////////////
 
             // SET
-            virtual void SetColumnLabel(const std::string &columnLabel, const std::string &newColumnLabel) {
+            void SetColumnLabel(const std::string &columnLabel, const std::string &newColumnLabel) {
                 auto normalizedColumnIndex = getColumnIndex(columnLabel);
 
                 documentMesh[0][normalizedColumnIndex] = newColumnLabel;
@@ -247,7 +249,7 @@ namespace rapidcsv {
             }
 
             // GET
-            virtual std::string GetColumnLabel(std::size_t columnIndex) {
+            std::string GetColumnLabel(std::size_t columnIndex) {
                 auto normalizedColumnIndex = getColumnIndex(columnIndex);
                 return documentMesh[0][normalizedColumnIndex];
             }
@@ -255,20 +257,20 @@ namespace rapidcsv {
             //////////////////////////////////////////////////////////
             //////////////////////// SIZING //////////////////////////
             //////////////////////////////////////////////////////////
-            virtual std::size_t rowCount(const std::size_t rowIndex) const {
+            std::size_t rowCount(const std::size_t rowIndex) const {
                 auto normalizedRowIndex = getRowIndex(rowIndex);
                 return documentMesh[normalizedRowIndex].size();
             }
 
-            virtual std::size_t rowCount(const std::string& rowName) const {
+            std::size_t rowCount(const std::string& rowName) const {
                 return rowCount(getRowIndex(rowName));
             }
 
-            virtual std::size_t maxRowCount() const {
+            std::size_t maxRowCount() const {
                 return _rowCount;
             }
 
-            virtual std::size_t columnCount() const {
+            std::size_t columnCount() const {
                 return _columnCount;
             }
 
@@ -277,6 +279,7 @@ namespace rapidcsv {
             std::vector<T> _GetColumn(const size_t columnIndex) const {
                 using rapidcsv::read::simpleReader;
                 using rapidcsv::read::r_transform;
+                using rapidcsv::read::transform_if;
                 using rapidcsv::read::r_copy_if;
 
                 std::vector<T> column;
@@ -284,11 +287,11 @@ namespace rapidcsv {
                                                              : std::begin(documentMesh));
                 auto end = std::end(documentMesh);
 
-                auto reader = std::move(r_copy_if(r_transform(simpleReader(begin, end), [&columnIndex](const MeshRow &row) {
+                auto reader = std::move(transform_if(simpleReader(begin, end), [&columnIndex](const MeshRow &row) {
                     auto finder = row.find(columnIndex);
                     return finder != std::end(row) ? std::make_pair(true, finder->second)
                                                    : std::make_pair(false, "");
-                }), &std::get<0>));
+                }, &std::get<0>));
 
                 std::transform(std::begin(reader),
                                std::end(reader),
@@ -376,7 +379,7 @@ namespace rapidcsv {
 }
 
 namespace rapidcsv {
-    void save(const doc::Document& document) {
+    void save(const doc::CSVDocument& document) {
         using rapidcsv::operators::to_string;
         using rapidcsv::read::wrapped;
         using rapidcsv::read::zipped;
@@ -469,7 +472,7 @@ namespace rapidcsv {
         return load(PropertiesBuilder().filePath(path));
     }
 
-    void save(const doc::Document& document, const std::string& path) {
+    void save(const doc::CSVDocument& document, const std::string& path) {
         PropertiesBuilder builder = document.documentProperties;
         document.documentProperties = std::move(builder.filePath(path));
         save(document);

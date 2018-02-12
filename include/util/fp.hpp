@@ -201,6 +201,8 @@ namespace rapidcsv {
     namespace read {
         template <typename T, typename std::enable_if<std::is_arithmetic<T>::value>::type* = nullptr>
         class NumberSequenceReader: public Reader<T> {
+            using Reader::Reader;
+
             T current;
         public:
             explicit NumberSequenceReader(const T& start): current(start) { }
@@ -217,24 +219,22 @@ namespace rapidcsv {
 
     namespace read {
         template <typename T, typename R, typename Trans>
-        auto r_transform(Reader<T>&& reader, Trans transformer)
-        -> TransformReader<T, R, Trans> {
-            return TransformReader<T, R, Trans>(std::move(reader), transformer);
+        auto r_transform(Reader<T>&& reader, Trans transformer) -> Reader<T> {
+            return TransformReader<T, R, Trans>(std::forward<Reader<T>>(reader), transformer);
         }
 
         template <typename T, typename Pred>
-        auto r_copy_if(Reader<T>&& reader, Pred predicate)
-        -> CopyIfReader<T, Pred> {
-            return CopyIfReader<T, Pred>(std::move(reader), predicate);
+        auto r_copy_if(Reader<T>&& reader, Pred predicate) -> Reader<T> {
+            return CopyIfReader<T, Pred>(std::forward<Reader<T>>(reader), predicate);
         }
 
         template<typename T, typename R, typename InputIt, typename Pred, typename Trans>
-        Reader<R> transform_if(Reader<T>&& reader, Trans trans, Pred pred) {
-            return CopyIfReader<R, Pred>(TransformReader<T, R, Trans>(std::move(reader), trans), pred);
+        auto transform_if(Reader<T>&& reader, Trans trans, Pred pred) -> Reader<R> {
+            return r_copy_if(r_transform(std::forward<Reader<T>>(reader), trans), pred);
         }
 
         template <typename T>
-        auto sequence(const T &start) -> NumberSequenceReader<T> {
+        auto sequence(const T &start) -> decltype(NumberSequenceReader<T>(start)) {
             return NumberSequenceReader<T>(start);
         }
 
@@ -244,17 +244,13 @@ namespace rapidcsv {
         }
 
         template <typename T, typename ...Ts>
-        auto zipped(Reader<T>&& reader, Reader<Ts>&&... readers)
-        -> ZipReader<T, Ts...> {
-            return ZipReader<T, Ts...>(std::move(reader), std::move(readers));
+        auto zipped(Reader<T>&& reader, Reader<Ts>&&... readers) -> ZipReader<T, Ts...> {
+            return ZipReader<T, Ts...>(std::forward<Reader<T>>(reader), std::forward<Reader<Ts>>(readers)...);
         }
 
         template <typename T>
-        auto enumerate(Reader<T>&& reader)
-            -> ZipReader<std::size_t, T> {
-            return zipped(
-                    std::forward<Reader<std::size_t>>(sequence(static_cast<std::size_t>(0))),
-                    std::move(reader));
+        auto enumerate(Reader<T>&& reader) -> ZipReader<std::size_t, T> {
+            return zipped(sequence(static_cast<std::size_t>(0)), std::forward<Reader<T>>(reader));
         }
     }
 }

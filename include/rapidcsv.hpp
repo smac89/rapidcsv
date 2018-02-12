@@ -13,14 +13,10 @@
 
 #pragma once
 
-#include <sstream>
-#include <string>
-#include <cstddef>
-
-#include "csv_document.hpp"
+#include "document/document.hpp"
 
 namespace rapidcsv {
-    using namespace doc;
+    using doc::Document;
 
     //////////////////////////////////////////////////////////
     /////////////////////// CONSTANTS ////////////////////////
@@ -35,43 +31,9 @@ namespace rapidcsv {
     //////////////////////// DOCUMENT ////////////////////////
     //////////////////////////////////////////////////////////
 
-    void save(const Document& document);
-    void save(const Document& document, const std::string& path);
-
-    Document load(const Properties &properties);
-    Document load(const std::string& path);
-
-    //////////////////////////////////////////////////////////
-    ////////////////////// CONVERTERS ////////////////////////
-    //////////////////////////////////////////////////////////
-
-    namespace convert {
-        template<typename T>
-        std::string convert_to_string(const T &pVal) {
-            std::ostringstream out;
-            out << pVal;
-            return out.str();
-        }
-
-        template<typename T>
-        T convert_to_val(const std::string &pStr) {
-            std::istringstream in(pStr);
-            T pVal;
-            in >> pVal;
-            return pVal;
-        }
-    }
-
-
-    namespace convert {
-        template <>
-        inline std::string convert_to_string(const std::string& pVal) {
-            return pVal;
-        }
-
-        template <>
-        inline std::string convert_to_val(const std::string& pStr) {
-            return pStr;
-        }
-    }
+//    void save(const Document& document);
+//    void save(const Document& document, const std::string& path);
+//
+//    Document&& load(const Properties &properties);
+//    Document&& load(const std::string& path);
 }
