@@ -13,15 +13,15 @@
 #include <algorithm>
 #include <numeric>
 
-#include "reader/simple_reader.hpp"
-#include "reader/supply_reader.hpp"
-#include "reader/readable_wrapper.hpp"
-#include "document/properties.hpp"
-#include "document/document.hpp"
-#include "csv_reader.hpp"
-#include "csv_convert.hpp"
-#include "csv_iterator.hpp"
-#include "util/fp.hpp"
+#include "detail/reader/simple_reader.hpp"
+#include "detail/reader/supply_reader.hpp"
+#include "detail/reader/readable_wrapper.hpp"
+#include "detail/document/properties.hpp"
+#include "detail/document/document.hpp"
+#include "detail/csv_reader.hpp"
+#include "detail/csv_convert.hpp"
+#include "detail/csv_iterator.hpp"
+#include "detail/util/fp.hpp"
 
 namespace rapidcsv {
     namespace doc {
@@ -61,13 +61,31 @@ namespace rapidcsv {
             }
 
             template<typename T>
-            virtual std::vector<T> GetColumn(const size_t columnIndex) const {
-                return _GetColumn(getColumnIndex(columnIndex));
+            std::vector<T> GetColumn(const size_t columnIndex) const {
+                return reader_to_vector(_GetColumn(getColumnIndex(columnIndex)),
+                                        &rapidcsv::convert::convert_to_val<T>);
             }
 
             template<typename T>
-            virtual std::vector<T> GetColumn(const std::string &columnName) const {
-                return _GetColumn(getColumnIndex(columnName));
+            std::vector<T> GetColumn(const std::string &columnName) const {
+                return reader_to_vector(_GetColumn(getColumnIndex(columnName)),
+                                        &rapidcsv::convert::convert_to_val<T>);
+            }
+
+            std::vector<std::string> GetColumn(const std::string &columnName, const std::string& fillValue) const {
+
+            }
+
+            std::vector<std::string> GetColumn(const std::size_t &columnIndex, const std::string& fillValue) const {
+
+            }
+
+            std::vector<std::string> GetColumn(const std::string &columnName) {
+
+            }
+
+            std::vector<std::string> GetColumn(const std::size_t &columnIndex) {
+
             }
 
             // SET
@@ -275,14 +293,11 @@ namespace rapidcsv {
             }
 
         private:
-            template<typename T>
-            std::vector<T> _GetColumn(const size_t columnIndex) const {
+            rapidcsv::read::Reader<std::string> _GetColumn(const size_t columnIndex) const {
                 using rapidcsv::read::simpleReader;
-                using rapidcsv::read::r_transform;
                 using rapidcsv::read::transform_if;
-                using rapidcsv::read::r_copy_if;
+                using rapidcsv::read::r_transform;
 
-                std::vector<T> column;
                 auto begin = (documentProperties.hasHeader() ? std::next(std::begin(documentMesh))
                                                              : std::begin(documentMesh));
                 auto end = std::end(documentMesh);
@@ -293,13 +308,9 @@ namespace rapidcsv {
                                                    : std::make_pair(false, "");
                 }, &std::get<0>));
 
-                std::transform(std::begin(reader),
-                               std::end(reader),
-                               std::back_inserter(column), [](std::pair<bool, std::string>&& data) {
-                            return std::move(convert::convert_to_val<T>(std::get<1>(data)));
-                        });
-
-                return column;
+                return r_transform(std::forward<std::decay<decltype(reader)>::type>(reader), [](std::pair<bool, std::string>&& data) {
+                    return std::get<1>(std::forward<std::decay<decltype(data)>::type>(data));
+                });
             }
 
             template<typename T>
@@ -368,12 +379,26 @@ namespace rapidcsv {
                 return normalizedRow;
             }
 
+            template <typename F, typename T, typename Cvt>
+            inline static std::vector<T> reader_to_vector(rapidcsv::read::Reader<F>&& reader, Cvt cvt) {
+                std::vector<T> vec;
+                std::transform(std::make_move_iterator(std::begin(reader)),
+                               std::make_move_iterator(std::end(reader)),
+                               std::back_inserter(vec), cvt);
+
+                return vec;
+            }
+
         private:
             std::vector<MeshRow> documentMesh;
             std::unordered_map<std::string, std::size_t> columnNames;
             std::unordered_map<std::string, std::size_t> rowNames;
             std::size_t _rowCount = 0;
             std::size_t _columnCount = 0;
+        };
+
+        class Document::Impl: public CSVDocument {
+            using CSVDocument::CSVDocument;
         };
     }
 }

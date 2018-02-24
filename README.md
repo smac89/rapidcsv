@@ -6,7 +6,7 @@ Rapidcsv (NOT WORKING)
 | [![Build status](https://travis-ci.org/d99kris/rapidcsv.svg?branch=master)](https://travis-ci.org/d99kris/rapidcsv) | [![Build status](https://ci.appveyor.com/api/projects/status/yyc65as5ln6m6i8l/branch/master?svg=true)](https://ci.appveyor.com/project/d99kris/rapidcsv/branch/master) |
 
 Rapidcsv is a simple C++ header-only library for CSV parsing. While the name admittedly was inspired
-by the rapidjson project, the objectives are not the same. The goal of rapidcsv is to be an easy-to-use
+by the rapidjson project, the objectives are not the same. The goal of detail is to be an easy-to-use
 CSV library enabling rapid development. For optimal performance (be it CPU or memory usage) a CSV
 parser implemented for the specific use-case is likely to be more performant.
 

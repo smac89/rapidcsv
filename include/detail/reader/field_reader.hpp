@@ -4,7 +4,7 @@
 #include <string>
 #include <utility>
 #include "simple_reader.hpp"
-#include "csv_except.hpp"
+#include "detail/csv_except.hpp"
 
 namespace rapidcsv {
     namespace read {

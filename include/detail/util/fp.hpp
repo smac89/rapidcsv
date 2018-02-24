@@ -4,8 +4,8 @@
 #include <utility>
 #include <limits>
 #include <functional>
-#include "iterator/iterator.hpp"
-#include "reader/simple_reader.hpp"
+#include "detail/iterator/iterator.hpp"
+#include "detail/reader/simple_reader.hpp"
 
 namespace rapidcsv {
 
@@ -186,8 +186,8 @@ namespace rapidcsv {
 
             constexpr static struct {
                 template <typename T>
-                auto operator()(Reader<T>& reader) const -> T {
-                    return std::move(reader.next());
+                auto operator()(Reader<T>&& reader) const -> T {
+                    return std::move(reader).next();
                 }
             } GetNextFunc;
         };
@@ -203,12 +203,12 @@ namespace rapidcsv {
         class NumberSequenceReader: public Reader<T> {
             using Reader::Reader;
 
-            T current;
+            T current, last;
         public:
-            explicit NumberSequenceReader(const T& start): current(start) { }
+            explicit NumberSequenceReader(const T& start, const T& end): current(start), last(end) { }
 
             bool has_next() const {
-                return current < std::numeric_limits<T>::max();
+                return current < end;
             }
 
             T next() {
@@ -234,8 +234,8 @@ namespace rapidcsv {
         }
 
         template <typename T>
-        auto sequence(const T &start) -> decltype(NumberSequenceReader<T>(start)) {
-            return NumberSequenceReader<T>(start);
+        auto sequence(const T &start, const T& last=std::numeric_limits<T>::max()) -> decltype(NumberSequenceReader<T>(start, last)) {
+            return NumberSequenceReader<T>(start, last);
         }
 
         template <>

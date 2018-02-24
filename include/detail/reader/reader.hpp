@@ -1,7 +1,7 @@
 #ifndef RAPIDCSV_READER_HPP
 #define RAPIDCSV_READER_HPP
 
-#include "iterator/iterator.hpp"
+#include "detail/iterator/iterator.hpp"
 
 namespace rapidcsv {
     namespace read {
@@ -40,6 +40,12 @@ namespace rapidcsv {
             }
 
             virtual ~Reader<T>() {}
+
+//            template <typename Map>
+//            friend Reader<T>& operator | (Reader<T>& reader, Map map);
+//
+//            template <typename F, typename Filter>
+//            friend Reader<F>& operator |> (Reader<T>& reader, Filter filter);
 
         protected:
             virtual const T& peek() const {

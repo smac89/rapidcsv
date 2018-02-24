@@ -1,9 +1,9 @@
 #ifndef RAPIDCSV_ITERATOR_HPP
 #define RAPIDCSV_ITERATOR_HPP
 
-#include "iterator/iterator_base.hpp"
-#include "reader/reader.hpp"
-#include "csv_except.hpp"
+#include "detail/iterator/iterator_base.hpp"
+#include "detail/reader/reader.hpp"
+#include "detail/csv_except.hpp"
 
 namespace rapidcsv {
     namespace iter {
